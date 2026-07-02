@@ -31,13 +31,13 @@ export default function RelatedProducts({ product }: RelatedProductsProps) {
               className="group overflow-hidden hover:shadow-lg transition-all duration-300"
             >
               <Link href={`/product/${relatedProduct.id}`}>
-                <div className="aspect-square overflow-hidden bg-muted">
+                <div className="aspect-square overflow-hidden bg-muted/30 flex items-center justify-center p-3">
                   <Image
                     src={relatedProduct.image}
                     alt={relatedProduct.name}
                     width={400}
                     height={400}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105 shadow-sm rounded"
                   />
                 </div>
                 <CardContent className="p-4">

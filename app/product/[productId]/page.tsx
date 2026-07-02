@@ -78,7 +78,7 @@ export default function Product() {
       <div className="grid lg:grid-cols-2 gap-12 mb-16">
         <div className="space-y-4">
           <div className="w-full max-w-[500px] mx-auto flex flex-col items-center px-4">
-            <div className="rounded-xl shadow-lg overflow-hidden mb-4 w-full">
+            <div className="rounded-xl shadow-md overflow-hidden mb-4 w-full bg-muted/20 border border-border flex items-center justify-center p-6 aspect-[3/4]">
               <Image
                 src={product.image}
                 alt="Selected product"
@@ -86,7 +86,7 @@ export default function Product() {
                 height={600}
                 priority
                 fetchPriority="high"
-                className="rounded-xl object-cover w-full h-auto max-h-[500px]"
+                className="rounded shadow-lg object-contain max-w-full max-h-full w-auto h-auto"
               />
             </div>
           </div>
