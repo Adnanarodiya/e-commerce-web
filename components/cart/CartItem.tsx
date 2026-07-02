@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 
@@ -19,11 +20,12 @@ interface CartItemProps {
 
 export default function CartItem({ item, isLast }: CartItemProps) {
   const { removeFromCart, updateQuantity } = useCart();
+  const { isRtl } = useLanguage();
 
   return (
     <div>
-      <div className="flex items-start gap-4">
-        <div className="relative w-[100px] h-[100px]">
+      <div className={`flex items-start gap-4 ${isRtl ? "flex-row-reverse" : ""}`}>
+        <div className="relative w-[100px] h-[100px] shrink-0">
           <Image
             src={item.image}
             alt={item.name}
@@ -34,13 +36,13 @@ export default function CartItem({ item, isLast }: CartItemProps) {
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0 pr-4">
+          <div className={`flex items-start justify-between ${isRtl ? "flex-row-reverse" : ""}`}>
+            <div className={`flex-1 min-w-0 ${isRtl ? "pl-4 text-right" : "pr-4 text-left"}`} style={{ direction: isRtl ? "rtl" : "ltr" }}>
               <h2 className="font-semibold text-foreground line-clamp-2">
                 {item.name}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                ₹{item.price.toFixed(2)} each
+                ₹{item.price.toFixed(2)} {isRtl ? "فی کتاب" : "each"}
               </p>
             </div>
 
@@ -54,8 +56,8 @@ export default function CartItem({ item, isLast }: CartItemProps) {
             </Button>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center border border-border rounded-lg">
+          <div className={`flex items-center justify-between mt-4 ${isRtl ? "flex-row-reverse" : ""}`}>
+            <div className={`flex items-center border border-border rounded-lg ${isRtl ? "flex-row-reverse" : ""}`}>
               <Button
                 variant="ghost"
                 size="icon"
@@ -63,7 +65,7 @@ export default function CartItem({ item, isLast }: CartItemProps) {
                   updateQuantity(item.id, Math.max(1, item.quantity - 1))
                 }
                 disabled={item.quantity <= 1}
-                className="h-8 w-8 rounded-r-none"
+                className={`h-8 w-8 ${isRtl ? "rounded-l-none rounded-r" : "rounded-r-none rounded-l"}`}
               >
                 <Minus className="h-3 w-3" />
               </Button>
@@ -74,13 +76,13 @@ export default function CartItem({ item, isLast }: CartItemProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                className="h-8 w-8 rounded-l-none"
+                className={`h-8 w-8 ${isRtl ? "rounded-r-none rounded-l" : "rounded-l-none rounded-r"}`}
               >
                 <Plus className="h-3 w-3" />
               </Button>
             </div>
 
-            <div className="text-right">
+            <div className={isRtl ? "text-left" : "text-right"}>
               <p className="text-lg font-bold text-foreground">
                 ₹{(item.price * item.quantity).toFixed(2)}
               </p>

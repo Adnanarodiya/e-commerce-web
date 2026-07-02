@@ -7,7 +7,9 @@ import RelatedProducts from "@/components/product/RelatedProducts";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/CartContext";
-import products from "@/data/products.json";
+import { useLanguage } from "@/context/LanguageContext";
+import { db } from "@/lib/supabase";
+import type { Product } from "@/types/product";
 import { cn } from "@/lib/utils";
 import {
   Check,
@@ -20,35 +22,81 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+interface Book {
+  id: number;
+  name_en: string;
+  name_ur: string;
+  price: number;
+  description_en: string;
+  description_ur: string;
+  image: string;
+  stock: number;
+  weight: number;
+}
 
 export default function Product() {
   const { addToCart } = useCart();
+  const { language, isRtl } = useLanguage();
   const { productId } = useParams();
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [book, setBook] = useState<Book | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const product = products.find((p) => p.id === parseInt(productId as string));
+  useEffect(() => {
+    async function loadBook() {
+      setLoading(true);
+      try {
+        const found = await db.getBook(parseInt(productId as string));
+        setBook(found as Book | null);
+      } catch (err) {
+        console.error("Failed to load book:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadBook();
+  }, [productId]);
 
-  if (!product) {
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!book) {
     return <ProductNotFound />;
   }
 
+  const displayName =
+    language === "ur" ? book.name_ur || book.name_en : book.name_en;
+  const displayDescription =
+    language === "ur"
+      ? book.description_ur || book.description_en
+      : book.description_en;
+  const isOutOfStock = book.stock <= 0;
+
   const handleAddToCart = async () => {
+    if (isOutOfStock) return;
     setIsAdding(true);
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     for (let i = 0; i < quantity; i++) {
       addToCart({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
+        id: book.id,
+        name: displayName,
+        price: Number(book.price),
+        image: book.image,
         quantity: 1,
+        weight: book.weight ?? 80,
       });
     }
 
@@ -71,6 +119,15 @@ export default function Product() {
     }
   };
 
+  const relatedProduct: Product = {
+    id: book.id,
+    name: book.name_en,
+    price: Number(book.price),
+    image: book.image,
+    description: book.description_en,
+    weight: book.weight,
+  };
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <ProductBreadcrumb />
@@ -80,8 +137,8 @@ export default function Product() {
           <div className="w-full max-w-[500px] mx-auto flex flex-col items-center px-4">
             <div className="rounded-xl shadow-md overflow-hidden mb-4 w-full bg-muted/20 border border-border flex items-center justify-center p-6 aspect-[3/4]">
               <Image
-                src={product.image}
-                alt="Selected product"
+                src={book.image}
+                alt={displayName}
                 width={600}
                 height={600}
                 priority
@@ -92,9 +149,9 @@ export default function Product() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6" style={{ direction: isRtl ? "rtl" : "ltr" }}>
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-            {product.name}
+            {displayName}
           </h1>
           <div className="flex items-center gap-2 mb-4">
             <div className="flex items-center gap-1">
@@ -107,14 +164,26 @@ export default function Product() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <span className="text-3xl font-bold text-foreground">
-              ₹{product.price.toFixed(2)}
+              ₹{Number(book.price).toFixed(2)}
             </span>
+            <span className="text-xs text-muted-foreground font-medium bg-muted/60 px-2 py-0.5 rounded">
+              {book.weight ?? 80}g
+            </span>
+            {isOutOfStock ? (
+              <span className="text-xs font-bold bg-destructive text-destructive-foreground px-2 py-0.5 rounded">
+                {isRtl ? "اسٹاک ختم" : "Out of Stock"}
+              </span>
+            ) : (
+              <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                {isRtl ? `اسٹاک: ${book.stock}` : `Stock: ${book.stock}`}
+              </span>
+            )}
           </div>
 
           <p className="text-muted-foreground leading-relaxed">
-            {product.description}
+            {displayDescription}
           </p>
 
           <Separator />
@@ -122,7 +191,7 @@ export default function Product() {
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
-                Quantity
+                {isRtl ? "تعداد" : "Quantity"}
               </label>
               <div className="flex items-center gap-3">
                 <div className="flex items-center border border-border rounded-lg">
@@ -155,27 +224,33 @@ export default function Product() {
                 size="lg"
                 className={cn(
                   "flex-1 transition-all duration-300",
-                  justAdded
+                  isOutOfStock
+                    ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted"
+                    : justAdded
                     ? "bg-green-600 text-white hover:bg-green-600"
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
                 )}
                 onClick={handleAddToCart}
-                disabled={isAdding}
+                disabled={isAdding || isOutOfStock}
               >
                 {isAdding ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Adding...
+                    {isRtl ? "شامل ہو رہا ہے..." : "Adding..."}
                   </div>
                 ) : justAdded ? (
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4" />
-                    Added to Cart!
+                    {isRtl ? "کارٹ میں شامل ہو گیا!" : "Added to Cart!"}
+                  </div>
+                ) : isOutOfStock ? (
+                  <div className="flex items-center gap-2">
+                    {isRtl ? "اسٹاک ختم" : "Out of Stock"}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <ShoppingCart className="h-4 w-4" />
-                    Add to Cart
+                    {isRtl ? "کارٹ میں شامل کریں" : "Add to Cart"}
                   </div>
                 )}
               </Button>
@@ -184,9 +259,10 @@ export default function Product() {
                 size="lg"
                 variant="outline"
                 onClick={handleBuyNow}
+                disabled={isOutOfStock}
                 className="flex-1"
               >
-                Buy Now
+                {isRtl ? "ابھی خریدیں" : "Buy Now"}
               </Button>
             </div>
 
@@ -203,7 +279,7 @@ export default function Product() {
                 <Heart
                   className={cn("h-4 w-4 mr-2", isLiked && "fill-current")}
                 />
-                Add to Wishlist
+                {isRtl ? "پسندیدہ میں شامل کریں" : "Add to Wishlist"}
               </Button>
 
               <Button
@@ -212,7 +288,7 @@ export default function Product() {
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Share2 className="h-4 w-4 mr-2" />
-                Share
+                {isRtl ? "شیئر کریں" : "Share"}
               </Button>
             </div>
           </div>
@@ -221,7 +297,7 @@ export default function Product() {
 
       <Features />
 
-      <RelatedProducts product={product} />
+      <RelatedProducts product={relatedProduct} />
     </div>
   );
 }

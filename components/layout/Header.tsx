@@ -1,7 +1,8 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
-import { Menu, Search, ShoppingCart, X } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { Menu, Search, ShoppingCart, X, Globe, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -9,6 +10,8 @@ import { Button } from "../ui/button";
 
 export default function Header() {
   const { cart } = useCart();
+  const { language, setLanguage, t, userRole, setUserRole, isRtl } = useLanguage();
+  
   const cartCount =
     cart?.reduce((total, item) => total + item.quantity, 0) || 0;
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -40,7 +43,9 @@ export default function Header() {
 
   const isActivePath = (path: string) => pathname === path;
 
-  const navItems = [{ href: "/contact", label: "Contact" }];
+  const navItems = [
+    { href: "/contact", label: t("phone") === "Phone" ? "Contact" : "رابطہ کریں" }
+  ];
 
   return (
     <header
@@ -52,9 +57,9 @@ export default function Header() {
     >
       <div className="container mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-8 lg:space-x-12">
+          <div className={`flex items-center ${isRtl ? "space-x-reverse" : "space-x-8"} lg:${isRtl ? "space-x-reverse" : "space-x-12"}`}>
             <Link
-              className="text-2xl tracking-tight text-gray-900 hover:text-gray-700 transition-colors"
+              className="text-2xl font-bold tracking-tight text-gray-900 hover:text-gray-700 transition-colors"
               href="/"
               aria-label="Noorani Makatib Home"
             >
@@ -62,7 +67,7 @@ export default function Header() {
             </Link>
 
             <nav
-              className="hidden md:flex items-center space-x-1"
+              className={`hidden md:flex items-center ${isRtl ? "space-x-reverse space-x-1" : "space-x-1"}`}
               role="navigation"
               aria-label="Main navigation"
             >
@@ -72,7 +77,7 @@ export default function Header() {
                   href={href}
                   className={`relative py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
                     isActivePath(href)
-                      ? "bg-orange-100 shadow-md"
+                      ? "bg-orange-100 shadow-md text-primary"
                       : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   }`}
                   aria-current={isActivePath(href) ? "page" : undefined}
@@ -80,24 +85,75 @@ export default function Header() {
                   {label}
                 </Link>
               ))}
+
+              {/* Show Admin/Packer Panel link if Admin or Packer role is selected */}
+              {(userRole === "admin" || userRole === "packer") && (
+                <Link
+                  href="/admin"
+                  className={`relative py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                    isActivePath("/admin")
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-primary hover:bg-primary/10"
+                  }`}
+                >
+                  {userRole === "admin" ? t("adminPanel") : t("packerPanel")}
+                </Link>
+              )}
             </nav>
           </div>
 
-          <div className="hidden lg:flex flex-1 max-w-md mx-8">
+          <div className="hidden lg:flex flex-1 max-w-xs mx-4">
             <form className="relative w-full">
               <input
                 type="search"
-                placeholder="Search products..."
+                placeholder={isRtl ? "تلاش کریں..." : "Search products..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                className={`w-full ${isRtl ? "pr-10 pl-4 text-right" : "pl-10 pr-4 text-left"} py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-950 focus:border-transparent transition-all`}
                 aria-label="Search products"
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400`} />
             </form>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className={`flex items-center ${isRtl ? "space-x-reverse space-x-2 sm:space-x-4" : "space-x-2 sm:space-x-4"}`}>
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLanguage(language === "en" ? "ur" : "en")}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              title="Switch Language"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              <span>{language === "en" ? "اردو" : "English"}</span>
+            </button>
+
+            {/* Role Selector — visible only to staff (admin / packer) */}
+            {(userRole === "admin" || userRole === "packer") && (
+            <div className="relative group">
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-bold text-slate-800 transition-colors"
+                title="Toggle Testing Role"
+              >
+                <UserCheck className="h-3.5 w-3.5" />
+                <span className="capitalize">{userRole}</span>
+              </button>
+              <div className={`absolute ${isRtl ? "left-0" : "right-0"} mt-2 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 hidden group-hover:block z-50 text-xs`}>
+                <button
+                  onClick={() => setUserRole("admin")}
+                  className={`w-full text-left px-3 py-2 hover:bg-gray-100 ${userRole === "admin" ? "font-bold text-primary" : "text-gray-700"}`}
+                >
+                  Admin
+                </button>
+                <button
+                  onClick={() => setUserRole("packer")}
+                  className={`w-full text-left px-3 py-2 hover:bg-gray-100 ${userRole === "packer" ? "font-bold text-primary" : "text-gray-700"}`}
+                >
+                  Packer
+                </button>
+              </div>
+            </div>
+            )}
+
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="lg:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -134,19 +190,6 @@ export default function Header() {
                 </span>
               )}
             </Link>
-
-            <div className="hidden sm:flex items-center space-x-2">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="text-sm">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/">
-                <Button size="sm" variant="default" className="text-sm">
-                  Sign Up
-                </Button>
-              </Link>
-            </div>
           </div>
         </div>
 
@@ -155,14 +198,14 @@ export default function Header() {
             <form className="relative">
               <input
                 type="search"
-                placeholder="Search products..."
+                placeholder={isRtl ? "تلاش کریں..." : "Search products..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                className={`w-full ${isRtl ? "pr-10 pl-4 text-right" : "pl-10 pr-4 text-left"} py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent`}
                 aria-label="Search products"
                 autoFocus
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400`} />
             </form>
           </div>
         )}
@@ -181,7 +224,7 @@ export default function Header() {
                   onClick={closeMobileMenu}
                   className={`text-sm font-medium py-2 px-3 rounded-lg transition-all ${
                     isActivePath(href)
-                      ? "bg-orange-100"
+                      ? "bg-orange-100 text-primary"
                       : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                   }`}
                   aria-current={isActivePath(href) ? "page" : undefined}
@@ -189,19 +232,20 @@ export default function Header() {
                   {label}
                 </Link>
               ))}
-            </div>
 
-            <div className="flex flex-col space-y-3 pt-4 sm:hidden">
-              <Button variant="outline" className="w-full text-sm" asChild>
-                <Link href="/" onClick={closeMobileMenu}>
-                  Sign In
+              {(userRole === "admin" || userRole === "packer") && (
+                <Link
+                  href="/admin"
+                  onClick={closeMobileMenu}
+                  className={`text-sm font-bold py-2 px-3 rounded-lg transition-all ${
+                    isActivePath("/admin")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-primary hover:bg-gray-50"
+                  }`}
+                >
+                  {userRole === "admin" ? t("adminPanel") : t("packerPanel")}
                 </Link>
-              </Button>
-              <Button className="w-full text-sm" variant="default" asChild>
-                <Link href="/" onClick={closeMobileMenu}>
-                  Sign Up
-                </Link>
-              </Button>
+              )}
             </div>
           </nav>
         )}
