@@ -15,9 +15,10 @@ export default function OrderSummary() {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+  const discount = subtotal >= 5000 ? subtotal * 0.10 : 0;
+  const discountedSubtotal = subtotal - discount;
   const shipping = subtotal > 50 ? 0 : 9.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  const total = discountedSubtotal + shipping;
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -35,6 +36,13 @@ export default function OrderSummary() {
             <span className="font-medium">₹{subtotal.toFixed(2)}</span>
           </div>
 
+          {discount > 0 && (
+            <div className="flex justify-between text-sm text-green-600 font-semibold">
+              <span>10% Instant Discount</span>
+              <span>-₹{discount.toFixed(2)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Shipping</span>
             <span className="font-medium">
@@ -46,11 +54,6 @@ export default function OrderSummary() {
                 `₹${shipping.toFixed(2)}`
               )}
             </span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Tax</span>
-            <span className="font-medium">₹{tax.toFixed(2)}</span>
           </div>
 
           <Separator />

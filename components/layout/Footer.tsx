@@ -115,27 +115,26 @@ export default function Footer() {
               <Link
                 className="text-2xl tracking-tight text-gray-900 hover:text-gray-700 transition-colors"
                 href="/"
-                aria-label="BloomShop Home"
+                aria-label="Noorani Makatib Home"
               >
-                BLOOM<span className="text-primary">SHOP</span>
+                NOORANI<span className="text-primary"> MAKATIB</span>
               </Link>
               <p className="text-muted-foreground mb-6 max-w-sm">
-                Discover unique products that inspire your lifestyle. Quality
-                craftsmanship meets modern design.
+                Discover educational Islamic and Urdu books for children and beginners. Quality education meets moral growth.
               </p>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 text-primary" />
-                  <span>123 Fashion Street, Style City, SC 12345</span>
+                  <span>Mumbai, India</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <Phone className="h-4 w-4 text-primary" />
-                  <span>+1 (555) 123-4567</span>
+                  <span>+91 94268 80068</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4 text-primary" />
-                  <span>hello@bloomshop.com</span>
+                  <span>aiarodiya07@gmail.com</span>
                 </div>
               </div>
 
@@ -185,7 +184,7 @@ export default function Footer() {
 
         <div className="py-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>© 2025 BloomShop™. Made with</span>
+            <span>© 2026 Noorani Makatib™. Made with</span>
             <Heart className="h-4 w-4 text-red-500 fill-current" />
             <span>All Rights Reserved.</span>
           </div>

@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Bloom Book Shop",
+  title: "Noorani Makatib",
   description:
     "Discover a wide selection of educational Islamic and Urdu books for children and beginners. Enjoy fast delivery and secure payments.",
 };

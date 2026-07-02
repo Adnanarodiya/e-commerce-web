@@ -55,19 +55,19 @@ export default function Contact() {
     {
       icon: Mail,
       title: "Email Us",
-      details: ["hello@bloomshop.com", "support@bloomshop.com"],
+      details: ["aiarodiya07@gmail.com", "support@nooranimakatib.com"],
       description: "Send us an email anytime",
     },
     {
       icon: Phone,
       title: "Call Us",
-      details: ["+1 (555) 123-4567", "+1 (555) 987-6543"],
-      description: "Mon-Fri from 8am to 5pm",
+      details: ["+91 94268 80068"],
+      description: "Available from 8am to 8pm",
     },
     {
       icon: MapPin,
       title: "Visit Us",
-      details: ["123 Fashion Street", "Style City, SC 12345"],
+      details: ["Mumbai, India"],
       description: "Come say hello at our office",
     },
     {

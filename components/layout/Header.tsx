@@ -56,9 +56,9 @@ export default function Header() {
             <Link
               className="text-2xl tracking-tight text-gray-900 hover:text-gray-700 transition-colors"
               href="/"
-              aria-label="BloomShop Home"
+              aria-label="Noorani Makatib Home"
             >
-              BLOOM<span className="text-primary">SHOP</span>
+              NOORANI<span className="text-primary"> MAKATIB</span>
             </Link>
 
             <nav

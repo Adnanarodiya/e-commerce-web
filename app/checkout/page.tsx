@@ -36,9 +36,10 @@ export default function Checkout() {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+  const discount = subtotal >= 5000 ? subtotal * 0.10 : 0;
+  const discountedSubtotal = subtotal - discount;
   const shipping = subtotal > 50 ? 0 : 9.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  const total = discountedSubtotal + shipping;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -91,7 +92,7 @@ export default function Checkout() {
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     // Generate random Order ID
-    const randomOrderId = "BLOOM-" + Math.floor(100000 + Math.random() * 900000);
+    const randomOrderId = "NM-" + Math.floor(100000 + Math.random() * 900000);
     setOrderId(randomOrderId);
     setAmountPaid(total);
     setSelectedPaymentMethod(paymentMethod);
@@ -449,15 +450,17 @@ export default function Checkout() {
                   <span>Subtotal</span>
                   <span className="font-medium text-foreground">₹{subtotal.toFixed(2)}</span>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600 font-semibold">
+                    <span>10% Instant Discount</span>
+                    <span>-₹{discount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-muted-foreground">
                   <span>Shipping</span>
                   <span className="font-medium text-foreground">
                     {shipping === 0 ? "Free" : `₹${shipping.toFixed(2)}`}
                   </span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Tax</span>
-                  <span className="font-medium text-foreground">₹{tax.toFixed(2)}</span>
                 </div>
                 <Separator className="my-2" />
                 <div className="flex justify-between text-base font-semibold">
