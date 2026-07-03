@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, CheckCircle, CreditCard, Shield, Truck, Phone } from "lucide-react";
 import Link from "next/link";
+import BookImage from "@/components/ui/BookImage";
 import Image from "next/image";
 
 export default function Checkout() {
@@ -540,8 +541,8 @@ export default function Checkout() {
               <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
                 {cart.map((item) => (
                   <div key={item.id} className={`flex gap-3 text-sm ${isRtl ? "flex-row-reverse" : ""}`}>
-                    <div className="relative w-12 h-12 rounded-md overflow-hidden bg-muted flex-shrink-0 border border-border">
-                      <Image
+                    <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-border">
+                      <BookImage
                         src={item.image}
                         alt={item.name}
                         fill

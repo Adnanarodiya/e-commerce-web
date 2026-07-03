@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Lightweight no-auth gate: anyone with the shared passcode can enter /admin.
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect every /admin route EXCEPT the login page itself.
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
-    const unlocked = request.cookies.get("admin_unlocked");
-    if (!unlocked) {
+    if (!request.cookies.get("admin_unlocked")) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin/login";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (pathname.startsWith("/packer") && pathname !== "/packer/login") {
+    if (!request.cookies.get("packer_unlocked")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/packer/login";
       return NextResponse.redirect(url);
     }
   }
@@ -19,5 +24,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  matcher: ["/admin", "/admin/:path*", "/packer", "/packer/:path*"],
 };

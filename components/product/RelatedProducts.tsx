@@ -1,15 +1,40 @@
+"use client";
+
+import BookImage from "@/components/ui/BookImage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import products from "@/data/products.json";
+import { db } from "@/lib/supabase";
 import { Product } from "@/types/product";
-import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface RelatedProductsProps {
   product: Product;
 }
 
 export default function RelatedProducts({ product }: RelatedProductsProps) {
+  const [related, setRelated] = useState<Product[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const books = await db.getBooks();
+      setRelated(
+        books
+          .filter((b) => b.id !== product.id)
+          .slice(0, 4)
+          .map((b) => ({
+            id: b.id,
+            name: b.name_en,
+            price: Number(b.price),
+            image: b.image,
+            description: b.description_en,
+            weight: b.weight,
+          }))
+      );
+    }
+    load();
+  }, [product.id]);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -22,35 +47,32 @@ export default function RelatedProducts({ product }: RelatedProductsProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {products
-          .filter((p) => p.id !== product.id)
-          .slice(0, 4)
-          .map((relatedProduct) => (
-            <Card
-              key={relatedProduct.id}
-              className="group overflow-hidden hover:shadow-lg transition-all duration-300"
-            >
-              <Link href={`/product/${relatedProduct.id}`}>
-                <div className="aspect-square overflow-hidden bg-muted/30 flex items-center justify-center p-3">
-                  <Image
-                    src={relatedProduct.image}
-                    alt={relatedProduct.name}
-                    width={400}
-                    height={400}
-                    className="max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105 shadow-sm rounded"
-                  />
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-foreground line-clamp-1 mb-2">
-                    {relatedProduct.name}
-                  </h3>
-                  <p className="text-lg font-bold text-primary">
-                    ₹{relatedProduct.price.toFixed(2)}
-                  </p>
-                </CardContent>
-              </Link>
-            </Card>
-          ))}
+        {related.map((relatedProduct) => (
+          <Card
+            key={relatedProduct.id}
+            className="group overflow-hidden hover:shadow-lg transition-all duration-300"
+          >
+            <Link href={`/product/${relatedProduct.id}`}>
+              <div className="relative aspect-square overflow-hidden bg-muted/30">
+                <BookImage
+                  src={relatedProduct.image}
+                  alt={relatedProduct.name}
+                  fill
+                  sizes="(max-width: 640px) 50vw, 25vw"
+                  className="object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-foreground line-clamp-1 mb-2">
+                  {relatedProduct.name}
+                </h3>
+                <p className="text-lg font-bold text-primary">
+                  ₹{relatedProduct.price.toFixed(2)}
+                </p>
+              </CardContent>
+            </Link>
+          </Card>
+        ))}
       </div>
     </div>
   );

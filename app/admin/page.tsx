@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { db } from "@/lib/supabase";
+import PackedOrdersPanel from "@/components/orders/PackedOrdersPanel";
+import BookImage from "@/components/ui/BookImage";
+import Toast from "@/components/ui/Toast";
+import { setStaffSession } from "@/lib/staff-session";
+import { db, supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   TrendingUp, BarChart3, BookOpen, AlertTriangle,
-  Settings, Layers, PhoneCall, Check, Truck, Printer, Trash2, Plus, Edit2, RotateCw, LogOut
+  Settings, Layers, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload
 } from "lucide-react";
 import Image from "next/image";
 
@@ -50,12 +54,15 @@ interface Order {
   total: number;
   status: string; // 'pending' | 'ready_to_pack' | 'packed'
   payment_confirmed: boolean;
+  packed_at?: string | null;
+  pickup_confirmed?: boolean;
+  pickup_confirmed_at?: string | null;
   created_at: string;
   items: OrderItem[];
 }
 
 export default function AdminDashboard() {
-  const { t, isRtl, userRole } = useLanguage();
+  const { t, isRtl, setUserRole } = useLanguage();
   const [books, setBooks] = useState<Book[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [upiSettings, setUpiSettings] = useState({
@@ -73,11 +80,14 @@ export default function AdminDashboard() {
   // Call simulation modal state
   const [callModal, setCallModal] = useState<{ open: boolean; orderId: string; phone: string; name: string } | null>(null);
 
-  // Print slip state
-  const [printSlip, setPrintSlip] = useState<Order | null>(null);
-
   // QR Code edit state
   const [tempUpiSettings, setTempUpiSettings] = useState({ ...upiSettings });
+
+  // Toast & upload states
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: "", visible: false });
+  const [uploadingQr, setUploadingQr] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [confirmingPickupId, setConfirmingPickupId] = useState<string | null>(null);
 
   // CRUD book states
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -127,7 +137,46 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadData();
-  }, [userRole]);
+  }, []);
+
+  const uploadImage = async (file: File, bucket: "book-covers" | "qr-codes") => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("bucket", bucket);
+    const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Upload failed");
+    return data.url as string;
+  };
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client) return;
+
+    const channel = client
+      .channel("admin-orders-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders" },
+        (payload) => {
+          const orderId = (payload.new as { id?: string })?.id ?? "unknown";
+          setToast({ message: `New order received: ${orderId}`, visible: true });
+          loadData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, []);
 
   // Calculations
   const totalStockQuantity = books.reduce((sum, b) => sum + b.stock, 0);
@@ -177,18 +226,6 @@ export default function AdminDashboard() {
       console.error(err);
     } finally {
       setCallModal(null);
-    }
-  };
-
-  const handleBoxPackClick = async (order: Order) => {
-    try {
-      const success = await db.updateOrderStatus(order.id, "packed", true); // Confirm payment as well on pack
-      if (success) {
-        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: "packed", payment_confirmed: true } : o));
-        setPrintSlip({ ...order, status: "packed", payment_confirmed: true });
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -242,7 +279,7 @@ export default function AdminDashboard() {
       weight: "80",
       description_en: "",
       description_ur: "",
-      image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRK_84LHfiZSUCzdVOn1mJwIQEg-jTv-dWckEO2p8MqzQ&s=10"
+      image: ""
     });
     setIsBookModalOpen(true);
   };
@@ -291,9 +328,26 @@ export default function AdminDashboard() {
     }
   };
 
-  const handlePrintSlip = () => {
-    if (typeof window !== "undefined") {
-      window.print();
+  const handleConfirmPickup = async (orderId: string) => {
+    if (!window.confirm(t("confirmPickupPrompt"))) return;
+    setConfirmingPickupId(orderId);
+    try {
+      const success = await db.confirmPickup(orderId);
+      if (success) {
+        const now = new Date().toISOString();
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? { ...o, pickup_confirmed: true, pickup_confirmed_at: now }
+              : o
+          )
+        );
+        setToast({ message: "Pickup confirmed", visible: true });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setConfirmingPickupId(null);
     }
   };
 
@@ -303,6 +357,8 @@ export default function AdminDashboard() {
     } catch {
       /* ignore */
     }
+    setStaffSession("admin", false);
+    setUserRole("customer");
     if (typeof window !== "undefined") {
       window.location.href = "/admin/login";
     }
@@ -317,225 +373,77 @@ export default function AdminDashboard() {
     );
   }
 
-  // Packer role override: only show packer view
-  if (userRole === "packer") {
-    const packerOrders = orders.filter(o => o.status === "ready_to_pack");
-
-    return (
-      <div className="container mx-auto px-4 sm:px-6 py-8">
-        <div className={`flex items-center justify-between mb-8 pb-4 border-b border-border ${isRtl ? "flex-row-reverse" : ""}`}>
-          <div className={isRtl ? "text-right" : "text-left"}>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{t("packerPanel")}</h1>
-            <p className="text-muted-foreground mt-1">Pack boxes, generate reference slips, and complete orders.</p>
-          </div>
-          <div className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
-            <Badge className="bg-orange-500 hover:bg-orange-600 px-3 py-1 text-sm font-semibold">
-              {packerOrders.length} {isRtl ? "پیکنگ باقی ہے" : "Pending Pack"}
-            </Badge>
-            <Button variant="outline" size="sm" onClick={handleLogout} className="flex items-center gap-1.5 text-destructive hover:text-destructive">
-              <LogOut className="h-4 w-4" />
-              {isRtl ? "لاگ آؤٹ" : "Logout"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {packerOrders.length === 0 ? (
-            <Card className="p-12 text-center border-dashed border-2">
-              <div className="text-6xl mb-4">📦</div>
-              <h3 className="text-lg font-bold text-foreground mb-1">{isRtl ? "کوئی پینڈنگ پیکنگ نہیں ہے" : "No orders ready to pack"}</h3>
-              <p className="text-muted-foreground text-sm">Once the Admin confirms an order, it will appear here for packing.</p>
-            </Card>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-6">
-              {packerOrders.map(order => (
-                <Card key={order.id} className="border-2 border-primary/20 shadow-md">
-                  <CardHeader className="bg-primary/5 pb-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-md font-bold">{order.customer_name}</CardTitle>
-                        <CardDescription className="text-xs mt-0.5">{order.id} | {new Date(order.created_at).toLocaleDateString()}</CardDescription>
-                      </div>
-                      <Badge variant="outline" className="border-orange-500 text-orange-600 font-bold bg-orange-50 capitalize">
-                        {order.delivery_type === "in_person" ? t("inPerson") : order.delivery_type === "post" ? t("post") : t("courier")}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <span className="text-muted-foreground block font-bold">{isRtl ? "رابطہ نمبر" : "Mobile / Phone"}</span>
-                        <span className="font-semibold text-foreground">{order.customer_phone}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground block font-bold">{isRtl ? "ترسیل کا پتہ" : "Address"}</span>
-                        <span className="font-semibold text-foreground line-clamp-2">{order.customer_address}</span>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                      <span className="text-xs font-bold text-muted-foreground block mb-2">{isRtl ? "کتابوں کی تفصیل" : "Book Details"}</span>
-                      <div className="bg-muted/40 p-3 rounded-lg border border-border/60 space-y-2">
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-foreground">{item.book_name}</span>
-                            <span className="font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">Qty: {item.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <Button 
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
-                      onClick={() => handleBoxPackClick(order)}
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      {t("boxPack")}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Print Slip Dialog Overlay */}
-        {printSlip && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:p-0 print:bg-white print:relative">
-            <div className="bg-white text-black p-6 rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 print:shadow-none print:border-none print:p-0">
-              <div className="text-center pb-4 border-b border-dashed border-gray-300">
-                <h2 className="text-xl font-bold tracking-tight">{t("slipTitle")}</h2>
-                <p className="text-xs text-gray-500 mt-1">{t("slipDesc")}</p>
-              </div>
-
-              <div className="py-4 space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">{t("orderId")}:</span>
-                  <span className="font-bold">{printSlip.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">{t("name")}:</span>
-                  <span className="font-bold">{printSlip.customer_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">{t("phone")}:</span>
-                  <span className="font-bold">{printSlip.customer_phone}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">{t("shippingAddress")}:</span>
-                  <span className="font-bold text-right max-w-[240px] truncate-3-lines">{printSlip.customer_address}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">{t("deliveryMethod")}:</span>
-                  <span className="font-bold capitalize">{printSlip.delivery_type}</span>
-                </div>
-
-                <Separator className="border-dashed my-2" />
-
-                <div>
-                  <span className="text-xs text-gray-400 font-bold block mb-1">PACK CONTENT</span>
-                  <div className="bg-gray-50 p-2 rounded-lg border space-y-1">
-                    {printSlip.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-xs font-semibold">
-                        <span>{item.book_name}</span>
-                        <span>x {item.quantity}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-dashed border-gray-300 flex gap-3 print:hidden">
-                <Button variant="outline" className="flex-1" onClick={() => setPrintSlip(null)}>Close</Button>
-                <Button className="flex-1 bg-primary text-white" onClick={handlePrintSlip}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print Slip
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   // Admin View
   const pendingOrders = orders.filter(o => o.status === "pending");
   const packedOrders = orders.filter(o => o.status === "packed");
 
+  const tabs: {
+    id: string;
+    label: string;
+    icon: typeof BarChart3;
+    badge?: number;
+  }[] = [
+    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "orders", label: "Orders", icon: Truck, badge: pendingOrders.length },
+    { id: "books", label: "Inventory", icon: BookOpen },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
+
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-8">
-      <div className={`flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 pb-4 border-b border-border ${isRtl ? "md:flex-row-reverse" : ""}`}>
-        <div className={isRtl ? "text-right" : "text-left"}>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{t("adminPanel")}</h1>
-          <p className="text-muted-foreground mt-1">Manage books stock, orders fulfillment, view earnings reports, and update configuration.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={loadData} className="flex items-center gap-2">
-            <RotateCw className="h-4 w-4" />
-            Reload Data
-          </Button>
-          <Button onClick={handleOpenAddBook} className="bg-primary text-primary-foreground flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            {t("addBook")}
-          </Button>
-          <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2 text-destructive hover:text-destructive">
-            <LogOut className="h-4 w-4" />
-            {isRtl ? "لاگ آؤٹ" : "Logout"}
-          </Button>
+    <div className="min-h-screen bg-slate-100 -mx-0">
+      <div className="bg-slate-900 text-white border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight">{t("adminPanel")}</h1>
+            <p className="text-slate-400 text-xs mt-0.5">Noorani Makatib — stock, orders & payments</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={loadData} className="h-8 text-xs bg-transparent border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white">
+              <RotateCw className="h-3.5 w-3.5" />
+              Reload
+            </Button>
+            <Button size="sm" onClick={handleOpenAddBook} className="h-8 text-xs bg-primary text-primary-foreground">
+              <Plus className="h-3.5 w-3.5" />
+              {t("addBook")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="h-8 text-xs bg-transparent border-slate-600 text-red-300 hover:bg-slate-800 hover:text-red-200">
+              <LogOut className="h-3.5 w-3.5" />
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div className="bg-muted p-1 rounded-xl flex overflow-x-auto gap-1">
-          <button 
-            type="button"
-            onClick={() => setActiveTab("dashboard")} 
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
-              activeTab === "dashboard" ? "bg-white text-foreground shadow" : "text-muted-foreground hover:bg-white/50"
-            }`}
-          >
-            Dashboard
-          </button>
-          <button 
-            type="button"
-            onClick={() => setActiveTab("orders")} 
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              activeTab === "orders" ? "bg-white text-foreground shadow" : "text-muted-foreground hover:bg-white/50"
-            }`}
-          >
-            <span>Orders</span>
-            {pendingOrders.length > 0 && (
-              <Badge className="ml-2 bg-red-500 text-white border-none">{pendingOrders.length}</Badge>
-            )}
-          </button>
-          <button 
-            type="button"
-            onClick={() => setActiveTab("books")} 
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
-              activeTab === "books" ? "bg-white text-foreground shadow" : "text-muted-foreground hover:bg-white/50"
-            }`}
-          >
-            Inventory (CRUD)
-          </button>
-          <button 
-            type="button"
-            onClick={() => setActiveTab("settings")} 
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
-              activeTab === "settings" ? "bg-white text-foreground shadow" : "text-muted-foreground hover:bg-white/50"
-            }`}
-          >
-            Settings & QR
-          </button>
-        </div>
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+          <nav className="flex md:flex-col gap-0 md:w-44 shrink-0 border border-border bg-white overflow-x-auto md:overflow-visible">
+            {tabs.map(({ id, label, icon: Icon, badge }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-2 px-4 py-3 text-left text-xs sm:text-sm font-medium border-b md:border-b-0 md:border-l-2 border-border last:border-b-0 transition-colors whitespace-nowrap ${
+                  activeTab === id
+                    ? "bg-slate-50 text-slate-900 md:border-l-primary border-l-transparent"
+                    : "text-muted-foreground hover:bg-slate-50 hover:text-foreground md:border-l-transparent"
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{label}</span>
+                {badge ? (
+                  <Badge className="ml-auto bg-red-600 text-white border-0 text-[10px] px-1.5">{badge}</Badge>
+                ) : null}
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex-1 min-w-0 space-y-4">
 
         {/* Tab 1: Dashboard Analytics & Ledger */}
         {activeTab === "dashboard" && (
           <>
             {/* Filters and Stats */}
-            <div className="flex justify-between items-center bg-muted/40 p-3 rounded-xl border border-border">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-white p-3 border border-border">
               <span className="text-sm font-semibold text-muted-foreground">{t("filterBy")}</span>
               <div className="flex gap-1.5">
                 <Button size="sm" variant={timeFilter === "day" ? "default" : "outline"} onClick={() => setTimeFilter("day")}>Today</Button>
@@ -544,13 +452,13 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               <Card className="shadow-sm">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Stock Valuation</p>
-                      <h3 className="text-2xl font-bold mt-1 text-slate-800">₹{totalStockValue.toLocaleString()}</h3>
+                <CardContent className="p-3 sm:p-6">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">Stock Valuation</p>
+                      <h3 className="text-lg sm:text-2xl font-bold mt-1 text-slate-800 truncate">₹{totalStockValue.toLocaleString()}</h3>
                     </div>
                     <Layers className="h-8 w-8 text-primary/80 bg-primary/10 p-1.5 rounded-lg" />
                   </div>
@@ -560,7 +468,7 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border-l-4 border-l-blue-500">
+              <Card className="shadow-sm border border-border">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start">
                     <div>
@@ -575,7 +483,7 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border-l-4 border-l-green-500">
+              <Card className="shadow-sm border border-border">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start">
                     <div>
@@ -590,7 +498,7 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border-l-4 border-l-purple-500">
+              <Card className="shadow-sm border border-border">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start">
                     <div>
@@ -791,35 +699,39 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            {/* Archived/Completed orders */}
+            {orders.filter((o) => o.status === "ready_to_pack").length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-md font-bold">With Packer</CardTitle>
+                  <CardDescription>Orders waiting to be packed</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  {orders
+                    .filter((o) => o.status === "ready_to_pack")
+                    .map((order) => (
+                      <div key={order.id} className="flex justify-between items-center border p-3 bg-orange-50/50">
+                        <div>
+                          <span className="font-bold">{order.customer_name}</span>
+                          <span className="text-muted-foreground ml-2">{order.id}</span>
+                        </div>
+                        <Badge className="bg-orange-500 text-white">With Packer</Badge>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
-                <CardTitle className="text-md font-bold">Fulfillment History</CardTitle>
+                <CardTitle className="text-md font-bold">{t("packedHistory")}</CardTitle>
+                <CardDescription>All packed orders — confirm pickup when customer collects</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="border rounded-xl divide-y text-xs">
-                  {orders.filter(o => o.status !== "pending").length === 0 ? (
-                    <p className="p-4 text-center text-muted-foreground">No fulfilled orders yet</p>
-                  ) : (
-                    orders.filter(o => o.status !== "pending").map((order, idx) => (
-                      <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/20">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-800">{order.customer_name}</span>
-                            <Badge variant="outline" className="text-[9px]">{order.id}</Badge>
-                          </div>
-                          <span className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString()} | Delivery: {order.delivery_type} | Payment: {order.payment_type}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge className={order.status === "packed" ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"}>
-                            {order.status === "packed" ? "Packed / Slip Shared" : "With Packer"}
-                          </Badge>
-                          <span className="font-bold text-slate-800">₹{order.total.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <PackedOrdersPanel
+                  orders={orders}
+                  onConfirmPickup={handleConfirmPickup}
+                  confirmingId={confirmingPickupId}
+                />
               </CardContent>
             </Card>
           </>
@@ -839,13 +751,13 @@ export default function AdminDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {books.map(book => (
                   <Card key={book.id} className="border flex flex-col justify-between">
                     <CardHeader className="p-4 pb-2">
                       <div className="flex gap-3">
-                        <div className="relative w-16 h-16 shrink-0 bg-muted rounded border border-border">
-                          <Image src={book.image} alt={book.name_en} fill className="object-cover rounded" />
+                        <div className="relative w-16 h-16 shrink-0 rounded border border-border overflow-hidden">
+                          <BookImage src={book.image} alt={book.name_en} fill className="object-cover" />
                         </div>
                         <div className="min-w-0">
                           <h4 className="font-bold text-sm text-foreground truncate">{book.name_en}</h4>
@@ -918,6 +830,29 @@ export default function AdminDashboard() {
                   onChange={e => setTempUpiSettings(prev => ({ ...prev, qr_code_url: e.target.value }))}
                   placeholder="/images/qr-code.png"
                 />
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    className="text-xs"
+                    disabled={uploadingQr}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingQr(true);
+                      try {
+                        const url = await uploadImage(file, "qr-codes");
+                        setTempUpiSettings(prev => ({ ...prev, qr_code_url: url }));
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "QR upload failed");
+                      } finally {
+                        setUploadingQr(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                  {uploadingQr && <span className="text-xs text-muted-foreground">Uploading…</span>}
+                </div>
               </div>
 
               <div className="p-3 bg-muted rounded-xl flex items-center gap-4">
@@ -937,12 +872,14 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         )}
+          </div>
+        </div>
       </div>
 
       {/* Confirmation modal for simulated calls */}
       {callModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-xl border border-gray-200">
+          <div className="bg-white rounded-sm p-6 max-w-sm w-full text-center space-y-4 shadow-lg border border-gray-200">
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
               <PhoneCall className="h-6 w-6 text-primary animate-bounce" />
             </div>
@@ -976,12 +913,12 @@ export default function AdminDashboard() {
       {/* CRUD Book edit/add modal */}
       {isBookModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form onSubmit={handleSaveBook} className="bg-white rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-xl border overflow-y-auto max-h-[90vh]">
+          <form onSubmit={handleSaveBook} className="bg-white rounded-sm p-4 sm:p-6 max-w-lg w-full space-y-4 shadow-lg border overflow-y-auto max-h-[90vh] mx-2 sm:mx-0">
             <h3 className="text-lg font-bold text-slate-800">
               {editingBook ? "Edit Book details" : "Add new book to store"}
             </h3>
 
-            <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="space-y-1">
                 <label className="font-bold text-muted-foreground">Book Name (English)</label>
                 <Input
@@ -1003,7 +940,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div className="space-y-1">
                 <label className="font-bold text-muted-foreground">Price (₹)</label>
                 <Input
@@ -1037,13 +974,49 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-1 text-xs">
-              <label className="font-bold text-muted-foreground">Cover Image URL</label>
+              <label className="font-bold text-muted-foreground">Cover Image URL (optional — leave blank for name placeholder)</label>
               <Input
-                required
                 value={bookFormData.image}
                 onChange={e => setBookFormData(prev => ({ ...prev, image: e.target.value }))}
-                placeholder="https://..."
+                placeholder="https://... or upload below"
               />
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Upload cover image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingCover}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingCover(true);
+                      try {
+                        const url = await uploadImage(file, "book-covers");
+                        setBookFormData(prev => ({ ...prev, image: url }));
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "Cover upload failed");
+                      } finally {
+                        setUploadingCover(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+                {uploadingCover && <span className="text-muted-foreground">Uploading…</span>}
+              </div>
+              {(bookFormData.image || bookFormData.name_en) && (
+                <div className="relative w-20 h-20 mt-2 rounded border overflow-hidden">
+                  <BookImage
+                    src={bookFormData.image}
+                    alt={bookFormData.name_en || "Preview"}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-1 text-xs">
@@ -1074,6 +1047,13 @@ export default function AdminDashboard() {
           </form>
         </div>
       )}
+
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        onClose={() => setToast(prev => ({ ...prev, visible: false }))}
+        variant="success"
+      />
     </div>
   );
 }

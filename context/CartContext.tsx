@@ -55,18 +55,19 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }, [cart]);
 
   const addToCart = (item: CartItem) => {
+    const amount = Math.max(1, item.quantity);
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
 
       if (existingItem) {
         return prevCart.map((cartItem) =>
           cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            ? { ...cartItem, quantity: cartItem.quantity + amount }
             : cartItem
         );
       }
 
-      return [...prevCart, item];
+      return [...prevCart, { ...item, quantity: amount }];
     });
   };
 

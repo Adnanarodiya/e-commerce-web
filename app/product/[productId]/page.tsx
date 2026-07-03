@@ -20,9 +20,15 @@ import {
   ShoppingCart,
   Star,
 } from "lucide-react";
-import Image from "next/image";
+import BookImage from "@/components/ui/BookImage";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+function parseQuantityInput(value: string): number {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return 0;
+  return parseInt(digits, 10);
+}
 
 interface Book {
   id: number;
@@ -41,7 +47,7 @@ export default function Product() {
   const { language, isRtl } = useLanguage();
   const { productId } = useParams();
   const router = useRouter();
-  const [quantity, setQuantity] = useState(1);
+  const [quantityInput, setQuantityInput] = useState("1");
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -82,23 +88,45 @@ export default function Product() {
       ? book.description_ur || book.description_en
       : book.description_en;
   const isOutOfStock = book.stock <= 0;
+  const parsedQuantity = parseQuantityInput(quantityInput);
+  const exceedsStock =
+    !isOutOfStock && parsedQuantity > book.stock;
+  const canAddToCart =
+    !isOutOfStock && parsedQuantity >= 1 && !exceedsStock;
+
+  const quantityInputWidth = `${Math.max(2, quantityInput.length || 1) + 1}ch`;
+
+  const setQuantityValue = (value: number) => {
+    const next = Math.max(1, value);
+    const capped = isOutOfStock ? next : Math.min(next, book.stock);
+    setQuantityInput(String(capped));
+  };
+
+  const handleQuantityInputChange = (value: string) => {
+    setQuantityInput(value.replace(/\D/g, ""));
+  };
+
+  const handleQuantityBlur = () => {
+    if (parsedQuantity < 1) {
+      setQuantityInput("1");
+    }
+  };
 
   const handleAddToCart = async () => {
-    if (isOutOfStock) return;
+    if (!canAddToCart) return;
+    const quantity = parsedQuantity;
     setIsAdding(true);
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    for (let i = 0; i < quantity; i++) {
-      addToCart({
-        id: book.id,
-        name: displayName,
-        price: Number(book.price),
-        image: book.image,
-        quantity: 1,
-        weight: book.weight ?? 80,
-      });
-    }
+    addToCart({
+      id: book.id,
+      name: displayName,
+      price: Number(book.price),
+      image: book.image,
+      quantity,
+      weight: book.weight ?? 80,
+    });
 
     setIsAdding(false);
     setJustAdded(true);
@@ -107,15 +135,18 @@ export default function Product() {
   };
 
   const handleBuyNow = () => {
+    if (!canAddToCart) return;
     handleAddToCart();
     setTimeout(() => router.push("/cart"), 500);
   };
 
   const handleQuantityChange = (type: "increment" | "decrement") => {
+    const current = Math.max(1, parsedQuantity || 1);
     if (type === "increment") {
-      setQuantity((prev) => prev + 1);
-    } else if (type === "decrement" && quantity > 1) {
-      setQuantity((prev) => prev - 1);
+      if (!isOutOfStock && current >= book.stock) return;
+      setQuantityValue(current + 1);
+    } else if (current > 1) {
+      setQuantityValue(current - 1);
     }
   };
 
@@ -129,28 +160,27 @@ export default function Product() {
   };
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
       <ProductBreadcrumb />
 
-      <div className="grid lg:grid-cols-2 gap-12 mb-16">
+      <div className="grid lg:grid-cols-2 gap-6 sm:gap-12 mb-8 sm:mb-16">
         <div className="space-y-4">
           <div className="w-full max-w-[500px] mx-auto flex flex-col items-center px-4">
-            <div className="rounded-xl shadow-md overflow-hidden mb-4 w-full bg-muted/20 border border-border flex items-center justify-center p-6 aspect-[3/4]">
-              <Image
+            <div className="relative rounded-xl shadow-md overflow-hidden mb-4 w-full bg-muted/20 border border-border aspect-[3/4]">
+              <BookImage
                 src={book.image}
                 alt={displayName}
-                width={600}
-                height={600}
+                fill
                 priority
-                fetchPriority="high"
-                className="rounded shadow-lg object-contain max-w-full max-h-full w-auto h-auto"
+                sizes="(max-width: 1024px) 100vw, 500px"
+                className="object-contain rounded shadow-lg"
               />
             </div>
           </div>
         </div>
 
         <div className="space-y-6" style={{ direction: isRtl ? "rtl" : "ltr" }}>
-          <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
+          <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4 leading-snug">
             {displayName}
           </h1>
           <div className="flex items-center gap-2 mb-4">
@@ -193,29 +223,55 @@ export default function Product() {
               <label className="text-sm font-medium text-foreground mb-2 block">
                 {isRtl ? "تعداد" : "Quantity"}
               </label>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center border border-border rounded-lg">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleQuantityChange("decrement")}
-                    disabled={quantity <= 1}
-                    className="h-10 w-10 rounded-r-none"
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      "inline-flex items-center border rounded-lg",
+                      exceedsStock
+                        ? "border-destructive"
+                        : "border-border"
+                    )}
                   >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="px-4 py-2 min-w-[60px] text-center font-medium">
-                    {quantity}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleQuantityChange("increment")}
-                    className="h-10 w-10 rounded-l-none"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleQuantityChange("decrement")}
+                      disabled={parsedQuantity <= 1}
+                      className="h-10 w-10 shrink-0 rounded-r-none"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={quantityInput}
+                      onChange={(e) => handleQuantityInputChange(e.target.value)}
+                      onBlur={handleQuantityBlur}
+                      aria-label={isRtl ? "تعداد" : "Quantity"}
+                      aria-invalid={exceedsStock}
+                      className="h-10 min-w-[2.5rem] max-w-[12rem] border-0 bg-transparent px-2 text-center font-medium tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      style={{ width: quantityInputWidth }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleQuantityChange("increment")}
+                      disabled={!isOutOfStock && parsedQuantity >= book.stock}
+                      className="h-10 w-10 shrink-0 rounded-l-none"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
+                {exceedsStock && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {isRtl
+                      ? `آپ ${parsedQuantity} نہیں خرید سکتے۔ صرف ${book.stock} دستیاب ہیں۔`
+                      : `You cannot buy ${parsedQuantity}. Only ${book.stock} available.`}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -231,7 +287,7 @@ export default function Product() {
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
                 )}
                 onClick={handleAddToCart}
-                disabled={isAdding || isOutOfStock}
+                disabled={isAdding || !canAddToCart}
               >
                 {isAdding ? (
                   <div className="flex items-center gap-2">
@@ -259,7 +315,7 @@ export default function Product() {
                 size="lg"
                 variant="outline"
                 onClick={handleBuyNow}
-                disabled={isOutOfStock}
+                disabled={!canAddToCart}
                 className="flex-1"
               >
                 {isRtl ? "ابھی خریدیں" : "Buy Now"}

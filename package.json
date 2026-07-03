@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-catalog": "python scripts/generate-catalog.py"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.2.6",

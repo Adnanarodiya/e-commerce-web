@@ -38,7 +38,7 @@
   --font-sans: Inter, sans-serif;
   --font-serif: Source Serif 4, serif;
   --font-mono: JetBrains Mono, monospace;
-  --radius: 1.225rem;
+  --radius: 0.125rem;
   --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
   --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.1),
@@ -92,7 +92,7 @@
   --font-sans: Inter, sans-serif;
   --font-serif: Source Serif 4, serif;
   --font-mono: JetBrains Mono, monospace;
-  --radius: 1.225rem;
+  --radius: 0.125rem;
   --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
   --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.1),
@@ -171,24 +171,58 @@
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    margin: 12mm;
+    size: auto;
   }
-  .print\:relative, .print\:relative * {
-    visibility: visible;
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
   }
-  .print\:relative {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    max-width: 100%;
-    border: none !important;
-    box-shadow: none !important;
+
+  /* Hide entire app except the slip portal */
+  body > *:not(#shipping-slip-print-host) {
+    display: none !important;
+  }
+
+  #shipping-slip-print-host {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+  }
+
+  .slip-screen-backdrop {
+    display: block !important;
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    inset: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
-  .print\:hidden {
+
+  .shipping-slip-print {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: white !important;
+    color: black !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .slip-screen-actions {
     display: none !important;
   }
 }

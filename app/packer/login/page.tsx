@@ -13,10 +13,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Lock } from "lucide-react";
+import { Package } from "lucide-react";
 import Link from "next/link";
 
-export default function AdminLogin() {
+export default function PackerLogin() {
   const { isRtl, setUserRole } = useLanguage();
   const router = useRouter();
   const [passcode, setPasscode] = useState("");
@@ -29,16 +29,16 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/admin/verify", {
+      const res = await fetch("/api/packer/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ passcode }),
       });
 
       if (res.ok) {
-        setStaffSession("admin", true);
-        setUserRole("admin");
-        router.push("/admin");
+        setStaffSession("packer", true);
+        setUserRole("packer");
+        router.push("/packer");
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -55,16 +55,16 @@ export default function AdminLogin() {
     <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="text-center">
-          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Lock className="h-6 w-6 text-primary" />
+          <div className="w-12 h-12 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Package className="h-6 w-6 text-orange-600" />
           </div>
           <CardTitle className="text-xl">
-            {isRtl ? "ایڈمن رسائی" : "Admin Access"}
+            {isRtl ? "پیکر رسائی" : "Packer Access"}
           </CardTitle>
           <CardDescription>
             {isRtl
-              ? "جاری رکھنے کے لیے پاس کوڈ درج کریں"
-              : "Enter the passcode to continue"}
+              ? "پیکنگ پینل کے لیے پاس کوڈ درج کریں"
+              : "Enter the packer passcode to continue"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -77,7 +77,7 @@ export default function AdminLogin() {
               type="password"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
-              placeholder={isRtl ? "پاس کوڈ" : "Passcode"}
+              placeholder={isRtl ? "پیکر پاس کوڈ" : "Packer passcode"}
               required
               autoFocus
             />
@@ -86,7 +86,7 @@ export default function AdminLogin() {
             )}
             <Button
               type="submit"
-              className="w-full bg-primary text-primary-foreground"
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white"
               disabled={loading || !passcode}
             >
               {loading
@@ -95,7 +95,7 @@ export default function AdminLogin() {
                   : "Verifying..."
                 : isRtl
                 ? "داخل کریں"
-                : "Unlock"}
+                : "Unlock Packer"}
             </Button>
             <Link
               href="/"

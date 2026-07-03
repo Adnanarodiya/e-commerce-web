@@ -1,7 +1,7 @@
 # Noorani Makatib — Progress Tracker
 
 > Living document. Update the status of every task as work happens.
-> Last updated: Phase 1 complete (catalog + pricing)
+> Last updated: Phase 0–4 complete (catalog from PRICE LIST.xlsx + Phase 4 features)
 
 ---
 
@@ -18,26 +18,27 @@
 
 | Status | Count |
 | :--- | ---: |
-| ✅ Done | 45 |
+| ✅ Done | 56 |
 | 🔄 In progress | 0 |
-| ⬜ Pending | 13 |
-| 🔴 Blocked | 1 |
+| ⬜ Pending | 6 |
+| 🔴 Blocked | 0 |
 | ❌ Cancelled | 1 |
-| **Active total** | **58** |
+| **Active total** | **62** |
 
-**Overall completion: ~78%** (45 / 58 active tasks)
+**Overall completion: ~90%** (56 / 62 active tasks)
 
-> Blocked item: seeding the real 28-book catalog, pending confirmation of the book list against the source PDF. A 10-book dummy catalog (with weight) is in place for development.
+> Catalog seeded from `PRICE LIST.xlsx` — **68 books**. Blank or zero MRP → **₹333**. No cover images yet; gray placeholder with book name shown everywhere.
 
 ---
 
 ## Decisions Locked In
 
-- **D1 — Packaging (weight-based):** ₹10 per kg, rounded up to the next whole kg, for Courier/Post; ₹0 In Person. Total weight = Σ(book.weight × quantity). ✅ Implemented in `context/CartContext.tsx`. *(1 kg = ₹10, 10 kg = ₹100. Confirm if you want exact kg instead of rounding up.)*
-- **No authentication for the store:** customers check out as guests. No login/signup flow. ❌ Supabase Auth for customers is cancelled.
-- **Admin/Packer access (passcode gate):** ✅ Implemented. `middleware.ts` protects `/admin`; staff enter a shared passcode at `/admin/login` → httpOnly cookie (12h). Passcode = `ADMIN_PASSCODE` env var (server-side; default `noorani2026` — **change it!**). Role switch (admin/packer) in header, staff-only.
-- **Book weight:** every book has a `weight` field in grams, **default 80g**, editable in the admin book form. ✅ Implemented in schema, `lib/supabase.ts`, admin form, product card, product page, and cart.
-- **Supabase:** ✅ LIVE. Project URL + anon key in `.env.local`; schema run remotely (4 tables + `weight` column + 10 dummy books + settings). App reads/writes the real DB. ⚠️ `SUPABASE_SERVICE_ROLE_KEY` still a placeholder; indexes/RLS not yet applied (RLS limited by the no-auth decision).
+- **D1 — Packaging (weight-based):** ₹10 per kg, rounded up to the next whole kg, for Courier/Post; ₹0 In Person. ✅ Implemented in `context/CartContext.tsx`.
+- **D2 — Book catalog:** ✅ Confirmed from `PRICE LIST.xlsx` (68 books). Regenerate via `npm run generate-catalog`.
+- **No authentication for the store:** customers check out as guests. ❌ Supabase Auth for customers is cancelled.
+- **Admin/Packer access (passcode gate):** ✅ Implemented. `middleware.ts` protects `/admin`.
+- **Book images:** ✅ Fallback placeholder (gray bg + book name). Real uploads optional via admin.
+- **Supabase:** ✅ LIVE. Run `lib/seed-catalog.sql` + `lib/schema-hardening.sql` on remote DB to sync 68 books, indexes, RLS.
 
 ---
 
@@ -46,11 +47,11 @@
 - [x] Audit current codebase and document status
 - [x] Write master plan (`MASTER_PLAN.md`)
 - [x] Create this progress tracker (`PROGRESS.md`)
-- [ ] 🟡 Confirm 28-book catalog against PDF *(blocked — I cannot read the PDF; need the list as text/CSV)* 🔴
-- [ ] 🟡 Final sign-off on packaging formula (D1)
+- [x] ✅ Confirm catalog from `PRICE LIST.xlsx` (68 books)
+- [x] ✅ Final sign-off on packaging formula (D1 — weight-based)
 - [x] ✅ Confirm admin/packer gate method → passcode (implemented)
 - [x] ✅ Receive Supabase project URL + anon key
-- [x] ✅ Create `.env.local` with Supabase credentials (⚠️ service_role key still needs the real value)
+- [x] ✅ Create `.env.local` with Supabase credentials (⚠️ set real `SUPABASE_SERVICE_ROLE_KEY` for uploads)
 
 ---
 
@@ -59,10 +60,10 @@
 ### Catalog & Data
 - [x] ✅ Bilingual book data model (`name_en/ur`, `description_en/ur`)
 - [x] ✅ Admin book CRUD (add / edit / delete)
-- [x] ✅ Add **weight** field to `books` (default 80g) — schema + `lib/supabase.ts` + admin form + product card
-- [x] ✅ Seed 10 **dummy** books (with weight) for development — replaces 6 placeholders
-- [ ] ⬜ Seed the 28 **real** books once the PDF list is confirmed *(blocked on Phase 0 catalog confirmation)* 🔴
-- [ ] ⬜ Add bilingual descriptions + cover image URLs for all 28 real books
+- [x] ✅ Add **weight** field to `books` (default 80g)
+- [x] ✅ Seed **68 real books** from `PRICE LIST.xlsx` (`lib/catalog.ts`)
+- [x] ✅ Bilingual descriptions for all books (auto-generated templates)
+- [x] ✅ Gray **fallback image** (book name centered) when no cover URL
 
 ### Pricing & Cart
 - [x] ✅ Cart add/remove/update qty + `localStorage` persistence
@@ -92,9 +93,9 @@
 - [x] ✅ Add `weight` column to `books` in `lib/schema.sql`
 - [x] ✅ Migrate product detail page from static JSON to DB (`db.getBook`)
 - [x] ✅ Create Supabase project (`jbajhdoewljxwmzgmxqf`)
-- [x] ✅ Run schema on Supabase (tables + `weight` + 10 dummy books + settings) — verified live
-- [ ] ⬜ Add DB indexes + RLS hardening *(RLS limited by no-auth; admin writes use anon key)*
-- [ ] ⬜ Seed 28 real books in Supabase *(blocked on PDF catalog confirmation)* 🔴
+- [x] ✅ Run schema on Supabase
+- [x] ✅ `lib/seed-catalog.sql` — 68-book seed script (run on remote DB)
+- [x] ✅ `lib/schema-hardening.sql` — indexes + RLS policies
 - [x] ✅ Set env vars; verify app reads/writes hit Supabase
 
 ---
@@ -103,15 +104,15 @@
 
 - [x] ✅ Guest checkout only (no customer accounts)
 - [x] ❌ Supabase Auth for customers — cancelled (not wanted)
-- [x] ✅ Lightweight admin/packer gate (shared passcode) — no user accounts
+- [x] ✅ Lightweight admin/packer gate (shared passcode)
 - [x] ✅ Protect `/admin` route with the passcode (`middleware.ts` + httpOnly cookie)
-- [x] ✅ Role switch (admin / packer) within the gated area (header dropdown, staff-only)
+- [x] ✅ Role switch (admin / packer) within the gated area
 
 ---
 
 ## Phase 4 — Realtime & Image Uploads
 
-### Admin Console (remaining)
+### Admin Console
 - [x] ✅ Dashboard analytics (stock valuation, bank/cash/total revenue)
 - [x] ✅ Day / month / year filter
 - [x] ✅ Low stock + out-of-stock lists with reorder
@@ -121,20 +122,20 @@
 - [x] ✅ Fulfillment history
 - [x] ✅ Books CRUD modal
 - [x] ✅ QR / UPI settings editor
-- [ ] ⬜ QR image **upload** (file → storage, not just URL)
-- [ ] ⬜ Book cover image **upload** in CRUD
+- [x] ✅ QR image **upload** (file → `qr-codes` bucket via `/api/admin/upload`)
+- [x] ✅ Book cover image **upload** in CRUD (`book-covers` bucket)
 
-### Packer Console (remaining)
+### Packer Console
 - [x] ✅ `ready_to_pack` queue
 - [x] ✅ Order card (name, phone, address, items, qty, delivery type)
 - [x] ✅ "Box Pack" action (status → packed, `payment_confirmed`)
 - [x] ✅ Printable shipping slip
-- [ ] ⬜ Print CSS to isolate the slip (`@media print`)
+- [x] ✅ Print CSS to isolate the slip (`.shipping-slip-print` in `globals.css`)
 
 ### Realtime
-- [ ] ⬜ Subscribe admin dashboard to realtime `orders` inserts
-- [ ] ⬜ "New order" toast notification
-- [ ] ⬜ Packer queue auto-refresh on status change
+- [x] ✅ Subscribe admin/packer dashboard to realtime `orders` inserts + updates
+- [x] ✅ "New order" toast notification
+- [x] ✅ Packer queue auto-refresh on status change
 
 ---
 
@@ -167,7 +168,8 @@
 
 | Date | Change |
 | :--- | :--- |
-| 2026-07-02 | Supabase LIVE: logged in via PAT, linked project `jbajhdoewljxwmzgmxqf`, ran `lib/schema.sql` remotely (4 tables + `weight` column + 10 dummy books + settings). Verified tables, books (with weight), and settings. App now reads/writes real Supabase DB. Fixed `.env.local` CLI-parse issue. 45/58 (~78%). ⚠️ PAT should be revoked. |
-| 2026-07-02 | Phase 2 (checkout) + Phase 3 (admin gate) done: stock validation at checkout, collision-safe Order ID (`db.orderExists`), no-auth passcode gate (`middleware.ts` + `/admin/login` + `/api/admin/verify` + httpOnly cookie), staff-only role switch, logout button. `ADMIN_PASSCODE=noorani2026` added to `.env.local` (change it). Build passes. 42/57 (~74%). |
-| 2026-07-02 | Phase 1 complete: added `weight` field (default 80g) to schema + DB + admin CRUD + product card + product page; seeded 10 dummy books; migrated product page to DB; switched packaging to weight-based ₹10/kg; configured `.env.local` (anon key OK, service key placeholder). Build passes. 38/57 (~67%). |
-| 2026-07-02 | Tracker created from codebase audit. 31 tasks done, 24 pending, 1 blocked, 1 cancelled (customer auth). Added weight-field task and no-auth decision. |
+| 2026-07-03 | Phase 0–4 complete: parsed `PRICE LIST.xlsx` → 68 books in `lib/catalog.ts` (blank/zero price → ₹333); `BookImage` fallback (gray + name); `lib/seed-catalog.sql` + `schema-hardening.sql`; QR/cover uploads via `/api/admin/upload`; realtime order subscriptions + toast; print CSS for shipping slip. Build passes. 56/62 (~90%). |
+| 2026-07-02 | Supabase LIVE: logged in via PAT, linked project `jbajhdoewljxwmzgmxqf`, ran `lib/schema.sql` remotely. 45/58 (~78%). |
+| 2026-07-02 | Phase 2 (checkout) + Phase 3 (admin gate) done. Build passes. 42/57 (~74%). |
+| 2026-07-02 | Phase 1 complete: weight field, 10 dummy books, weight-based packaging. Build passes. 38/57 (~67%). |
+| 2026-07-02 | Tracker created from codebase audit. |

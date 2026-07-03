@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { DEFAULT_BOOKS as CATALOG_DEFAULT_BOOKS } from "./catalog";
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -38,6 +39,9 @@ interface Order {
   total: number;
   status: string;
   payment_confirmed: boolean;
+  packed_at?: string | null;
+  pickup_confirmed?: boolean;
+  pickup_confirmed_at?: string | null;
   created_at: string;
 }
 
@@ -55,119 +59,7 @@ interface Setting {
   value: string;
 }
 
-// Default books helper
-const DEFAULT_BOOKS: Book[] = [
-  {
-    id: 1,
-    name_en: "Makhfoozat Ka Aasan Nisab",
-    name_ur: "ملفوظات کا آسان نصاب",
-    price: 150,
-    description_en: "An easy-to-learn syllabus of memorized passages, prayers, and basic Islamic teachings designed specifically for young students and beginners.",
-    description_ur: "ملفوظات، دعائیں اور بنیادی اسلامی تعلیمات کا ایک آسان نصاب جو خاص طور پر نوجوان طلباء اور مبتدیوں کے لیے تیار کیا گیا ہے۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRK_84LHfiZSUCzdVOn1mJwIQEg-jTv-dWckEO2p8MqzQ&s=10",
-    stock: 50,
-    weight: 80
-  },
-  {
-    id: 2,
-    name_en: "Bachon Ka Tohfa - Part 2",
-    name_ur: "بچوں کا تحفہ - حصہ دوم",
-    price: 180,
-    description_en: "Part 2 of the popular series 'Bachon Ka Tohfa'. Includes advanced lessons on Islamic ethics, stories of the prophets, and daily practices for children.",
-    description_ur: "مقبول سیریز 'بچوں کا تحفہ' کا دوسرا حصہ۔ اس میں بچوں کے لیے اسلامی اخلاقیات، انبیاء کے قصص اور روزمرہ کے معمولات پر اسباق شامل ہیں۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSfBo68cmQqfaQqRxNrkFh1d4ItA2QzZzm75O78qK6vL_w&s=10",
-    stock: 45,
-    weight: 90
-  },
-  {
-    id: 3,
-    name_en: "Bachon Ka Tohfa - Part 1",
-    name_ur: "بچوں کا تحفہ - حصہ اول",
-    price: 160,
-    description_en: "Part 1 of the introductory Islamic learning guide for young kids. Focuses on foundational moral values, basic beliefs, and engaging learning exercises.",
-    description_ur: "چھوٹے بچوں کے لیے تعارفی اسلامی سیکھنے کی گائیڈ کا پہلا حصہ۔ بنیادی اخلاقی اقدار، عقائد اور سیکھنے کی مشقوں پر توجہ مرکوز کرتا ہے۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUl8sNjlvktA5XILdFZhIV7ddHdgjhJTJOK3z4VDUBRQ&s=10",
-    stock: 60,
-    weight: 80
-  },
-  {
-    id: 4,
-    name_en: "Bachon Ko Hifz Kaise Karayein",
-    name_ur: "بچوں کو حفظ کیسے کروائیں",
-    price: 220,
-    description_en: "A comprehensive guidebook for parents and educators outlining practical, time-tested methods to help children memorize the Holy Quran easily and effectively.",
-    description_ur: "والدین اور اساتذہ کے لیے ایک جامع گائیڈ بک جس میں بچوں کو قرآن پاک کو آسانی اور مؤثر طریقے سے یاد کرنے میں مدد دینے کے عملی طریقے بیان کیے گئے ہیں۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRxTDMnupNp_7Wfb-ORBe8M9B727TN_r98f9VwF9mFIFQ&s=10",
-    stock: 2,
-    weight: 120
-  },
-  {
-    id: 5,
-    name_en: "Noorani Urdu Qaida",
-    name_ur: "نورانی اردو قاعدہ",
-    price: 120,
-    description_en: "A beautifully structured guide for children to learn basic Urdu letters, pronunciation, and vocabulary in a step-by-step interactive manner.",
-    description_ur: "بچوں کے لیے بنیادی اردو حروف، تلفظ اور الفاظ کو مرحلہ وار انٹرایکٹو طریقے سے سیکھنے کے لیے ایک خوبصورت گائیڈ۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8NTKfzHLIyjKK9DCpC51frO1uB0xvpU7_jWPQ_DtI6CnUQIcdGRj_j88&s=10",
-    stock: 0,
-    weight: 80
-  },
-  {
-    id: 6,
-    name_en: "Deeniyat Course - Beginner Guide",
-    name_ur: "دینیات کورس - مبتدی گائیڈ",
-    price: 140,
-    description_en: "An essential starter course book for basic Deeniyat studies, covering daily prayers, Islamic supplications, and fundamental manners.",
-    description_ur: "بنیادی دینیات کے مطالعہ کے لیے ایک ضروری تعارفی کتاب، جس میں روزمرہ کی نمازیں، دعائیں اور بنیادی آداب شامل ہیں۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsheDpskd6NSFI-wNQkb26vFS6Epk3gb-xgBmHBf5Kq284bGzjIPOYSSk&s=10",
-    stock: 80,
-    weight: 100
-  },
-  {
-    id: 7,
-    name_en: "Taysirul Quran",
-    name_ur: "تیسیرالقرآن - آسان اردو ترجمہ مع تشریحی فوائد",
-    price: 750,
-    description_en: "An easy Urdu translation of the Holy Quran with explanatory benefits, designed for beginners and general readers.",
-    description_ur: "قرآن پاک کا آسان اردو ترجمہ، تشریحی فوائد کے ساتھ، جو مبتدیوں اور عام قارئین کے لیے تیار کیا گیا ہے۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRK_84LHfiZSUCzdVOn1mJwIQEg-jTv-dWckEO2p8MqzQ&s=10",
-    stock: 20,
-    weight: 600
-  },
-  {
-    id: 8,
-    name_en: "Rauzatul Atfal",
-    name_ur: "روضۃ الاطفال",
-    price: 90,
-    description_en: "A foundational book teaching children the recitation of the Holy Quran from the very beginning, step by step.",
-    description_ur: "بچوں کو قرآن پاک کی تلاوت ابتدا سے، مرحلہ وار سکھانے والی بنیادی کتاب۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUl8sNjlvktA5XILdFZhIV7ddHdgjhJTJOK3z4VDUBRQ&s=10",
-    stock: 80,
-    weight: 80
-  },
-  {
-    id: 9,
-    name_en: "Haroof-e-Tahajji Takhti",
-    name_ur: "حروف تہجی تختی (جدید)",
-    price: 10,
-    description_en: "A modern tablet board printed with the Arabic alphabet to help young children recognize and learn the letters.",
-    description_ur: "بچوں کو حروف پہچاننے اور سیکھنے میں مدد کے لیے جدید تختی جس پر عربی حروف درج ہیں۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8NTKfzHLIyjKK9DCpC51frO1uB0xvpU7_jWPQ_DtI6CnUQIcdGRj_j88&s=10",
-    stock: 200,
-    weight: 80
-  },
-  {
-    id: 10,
-    name_en: "Syllabus Of Maktab",
-    name_ur: "نصاب مکتب",
-    price: 100,
-    description_en: "The complete syllabus guide for maktab teachers, outlining what to teach at each stage of a child's learning.",
-    description_ur: "مکتب کے اساتذہ کے لیے مکمل نصاب گائیڈ، جس میں بچے کی سیکھنے کی ہر منزل پر کیا پڑھانا ہے اس کی تفصیل دی گئی ہے۔",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsheDpskd6NSFI-wNQkb26vFS6Epk3gb-xgBmHBf5Kq284bGzjIPOYSSk&s=10",
-    stock: 100,
-    weight: 80
-  }
-];
+const DEFAULT_BOOKS: Book[] = CATALOG_DEFAULT_BOOKS;
 
 // Helper to get/set mock DB
 const getMockDB = () => {
@@ -175,9 +67,9 @@ const getMockDB = () => {
     return { books: DEFAULT_BOOKS, orders: [], orderItems: [], settings: [] };
   }
 
-  let books = localStorage.getItem("mock_books_v2");
+  let books = localStorage.getItem("mock_books_v3");
   if (!books) {
-    localStorage.setItem("mock_books_v2", JSON.stringify(DEFAULT_BOOKS));
+    localStorage.setItem("mock_books_v3", JSON.stringify(DEFAULT_BOOKS));
     books = JSON.stringify(DEFAULT_BOOKS);
   }
 
@@ -214,7 +106,7 @@ const getMockDB = () => {
 
 const saveMockDB = (db: { books: Book[]; orders: Order[]; orderItems: OrderItem[]; settings: Setting[] }) => {
   if (typeof window !== "undefined") {
-    localStorage.setItem("mock_books_v2", JSON.stringify(db.books));
+    localStorage.setItem("mock_books_v3", JSON.stringify(db.books));
     localStorage.setItem("mock_orders", JSON.stringify(db.orders));
     localStorage.setItem("mock_order_items", JSON.stringify(db.orderItems));
     localStorage.setItem("mock_settings", JSON.stringify(db.settings));
@@ -348,9 +240,11 @@ export const db = {
   },
 
   async updateOrderStatus(id: string, status: "pending" | "ready_to_pack" | "packed", paymentConfirmed?: boolean): Promise<boolean> {
+    const now = new Date().toISOString();
     if (isRealSupabaseConfigured && supabase) {
       const updates: Partial<Order> = { status };
       if (paymentConfirmed !== undefined) updates.payment_confirmed = paymentConfirmed;
+      if (status === "packed") updates.packed_at = now;
       const { error } = await supabase.from("orders").update(updates).eq("id", id);
       if (!error) return true;
       console.error("Supabase update order status error:", error);
@@ -362,6 +256,28 @@ export const db = {
     if (paymentConfirmed !== undefined) {
       dbData.orders[orderIdx].payment_confirmed = paymentConfirmed;
     }
+    if (status === "packed") {
+      dbData.orders[orderIdx].packed_at = now;
+    }
+    saveMockDB(dbData);
+    return true;
+  },
+
+  async confirmPickup(id: string): Promise<boolean> {
+    const now = new Date().toISOString();
+    if (isRealSupabaseConfigured && supabase) {
+      const { error } = await supabase
+        .from("orders")
+        .update({ pickup_confirmed: true, pickup_confirmed_at: now })
+        .eq("id", id);
+      if (!error) return true;
+      console.error("Supabase confirm pickup error:", error);
+    }
+    const dbData = getMockDB();
+    const orderIdx = dbData.orders.findIndex((o: Order) => o.id === id);
+    if (orderIdx === -1) return false;
+    dbData.orders[orderIdx].pickup_confirmed = true;
+    dbData.orders[orderIdx].pickup_confirmed_at = now;
     saveMockDB(dbData);
     return true;
   },

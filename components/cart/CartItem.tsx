@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import Image from "next/image";
+import BookImage from "@/components/ui/BookImage";
 
 interface CartItemProps {
   item: {
@@ -25,13 +25,13 @@ export default function CartItem({ item, isLast }: CartItemProps) {
   return (
     <div>
       <div className={`flex items-start gap-4 ${isRtl ? "flex-row-reverse" : ""}`}>
-        <div className="relative w-[100px] h-[100px] shrink-0">
-          <Image
+        <div className="relative w-[100px] h-[100px] shrink-0 rounded-lg overflow-hidden">
+          <BookImage
             src={item.image}
             alt={item.name}
             fill
             sizes="100px"
-            className="rounded-lg object-cover bg-muted"
+            className="object-cover"
           />
         </div>
 

@@ -18,6 +18,12 @@ export const metadata: Metadata = {
     "Discover a wide selection of educational Islamic and Urdu books for children and beginners. Enjoy fast delivery and secure payments.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
