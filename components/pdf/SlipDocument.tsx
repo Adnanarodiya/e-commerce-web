@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { SlipData } from "@/lib/slip";
+import { formatDeliveryType } from "@/lib/format-order";
 
 export type { SlipData, SlipItem } from "@/lib/slip";
 
@@ -144,7 +145,7 @@ export function SlipDocument({ slip }: { slip: SlipData }) {
         <View style={styles.fieldRow}>
           <Text style={styles.label}>Delivery Method</Text>
           <Text style={styles.value}>
-            {slip.delivery_type.toUpperCase()}
+            {formatDeliveryType(slip.delivery_type)}
           </Text>
         </View>
 

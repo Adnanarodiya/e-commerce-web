@@ -53,6 +53,10 @@ export default function Checkout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [confirmedOrder, setConfirmedOrder] = useState<{
+    total: number;
+    paymentType: "bank" | "cash";
+  } | null>(null);
   const [stockError, setStockError] = useState("");
 
   useEffect(() => {
@@ -192,6 +196,7 @@ export default function Checkout() {
     try {
       const success = await db.insertOrder(orderData, itemsData);
       if (success) {
+        setConfirmedOrder({ total, paymentType });
         setOrderId(generatedOrderId);
         setIsSuccess(true);
         clearCart();
@@ -206,7 +211,10 @@ export default function Checkout() {
     }
   };
 
-  if (isSuccess) {
+  if (isSuccess && confirmedOrder) {
+    const successTotal = confirmedOrder.total;
+    const successPaymentType = confirmedOrder.paymentType;
+
     return (
       <div className="container mx-auto px-4 py-16 text-center max-w-lg">
         <div className="flex justify-center mb-6">
@@ -226,7 +234,7 @@ export default function Checkout() {
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("paymentMethod")}:</span>
             <span className="font-semibold text-foreground">
-              {paymentType === "cash" ? t("cod") : t("bankTransfer")}
+              {successPaymentType === "cash" ? t("cod") : t("bankTransfer")}
             </span>
           </div>
           <div className="flex justify-between text-sm">
@@ -239,19 +247,19 @@ export default function Checkout() {
           </div>
           <div className="flex justify-between pt-3 border-t border-border/60 text-sm sm:text-base">
             <span className="text-muted-foreground font-medium">
-              {paymentType === "cash" ? t("amountToPay") + ":" : t("amountPaid") + ":"}
+              {successPaymentType === "cash" ? t("amountToPay") + ":" : t("amountPaid") + ":"}
             </span>
-            <span className="font-bold text-primary">₹{total.toFixed(2)}</span>
+            <span className="font-bold text-primary">₹{successTotal.toFixed(2)}</span>
           </div>
         </div>
         
-        {paymentType === "bank" && (
+        {successPaymentType === "bank" && (
           <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs sm:text-sm text-amber-800" style={{ direction: isRtl ? "rtl" : "ltr" }}>
             <p className="font-semibold mb-1">{isRtl ? "بینک ٹرانسفر کے بارے میں نوٹ:" : "Note regarding bank transfer:"}</p>
             <p>
               {isRtl 
-                ? `آپ کے آرڈر پر تب کارروائی کی جائے گی جب ہم تصدیق کر لیں گے کہ آپ کی ادائیگی (کل: ₹${total.toFixed(2)}) ہمارے بینک میں موصول ہو گئی ہے۔ ہم جلد ہی تصدیق کے لیے آپ سے رابطہ کریں گے۔`
-                : `Your order will be processed once we verify the receipt of your payment (total: ₹${total.toFixed(2)}) in our bank. We will contact you shortly to confirm.`}
+                ? `آپ کے آرڈر پر تب کارروائی کی جائے گی جب ہم تصدیق کر لیں گے کہ آپ کی ادائیگی (کل: ₹${successTotal.toFixed(2)}) ہمارے بینک میں موصول ہو گئی ہے۔ ہم جلد ہی تصدیق کے لیے آپ سے رابطہ کریں گے۔`
+                : `Your order will be processed once we verify the receipt of your payment (total: ₹${successTotal.toFixed(2)}) in our bank. We will contact you shortly to confirm.`}
             </p>
           </div>
         )}

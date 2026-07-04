@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { openSlipPdfInNewTab, downloadSlipPdf } from "@/lib/pdf-download";
+import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
+import { useLockBodyScroll } from "@/lib/use-lock-body-scroll";
 import { Printer, Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -36,6 +38,31 @@ interface ShippingSlipModalProps {
   onClose: () => void;
 }
 
+function SlipField({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="py-2.5 border-b border-gray-100 last:border-b-0">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">
+        {label}
+      </p>
+      <p
+        className={`text-sm font-bold text-gray-900 break-words leading-snug ${
+          mono ? "font-mono" : ""
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export default function ShippingSlipModal({
   slip,
   labels,
@@ -48,6 +75,8 @@ export default function ShippingSlipModal({
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  useLockBodyScroll(mounted);
 
   if (!mounted) return null;
 
@@ -72,58 +101,67 @@ export default function ShippingSlipModal({
   return createPortal(
     <div id="shipping-slip-print-host">
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4 overscroll-none touch-none"
         onClick={onClose}
         role="presentation"
       >
         <div
-          className="bg-white text-black p-6 rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 max-h-[90vh] overflow-y-auto"
+          className="bg-white text-black w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl border border-gray-200 max-h-[92vh] sm:max-h-[90vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h2 className="text-xl font-bold tracking-tight">
-                {labels.slipTitle}
-              </h2>
-              <p className="text-xs text-gray-500 mt-1">{labels.slipDesc}</p>
+          <div className="shrink-0 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 border-b border-gray-100">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 pr-2">
+                <h2 className="text-lg sm:text-xl font-bold tracking-tight leading-tight">
+                  {labels.slipTitle}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  {labels.slipDesc}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 -mr-1 rounded-full hover:bg-gray-100 shrink-0"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-full hover:bg-gray-100"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5 text-gray-500" />
-            </button>
           </div>
 
-          <SlipPreview slip={slip} labels={labels} />
+          <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
+            <SlipPreview slip={slip} labels={labels} />
+          </div>
 
-          <div className="slip-screen-actions pt-4 border-t border-dashed border-gray-300 flex flex-wrap gap-3">
-            <Button
-              variant="outline"
-              className="flex-1 min-w-[100px]"
-              onClick={onClose}
-              disabled={busy}
-            >
-              Close
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 min-w-[100px]"
-              onClick={handleDownload}
-              disabled={busy}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </Button>
-            <Button
-              className="flex-1 min-w-[100px] bg-primary text-white"
-              onClick={handlePrint}
-              disabled={busy}
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              {busy ? "Preparing…" : "Print Slip"}
-            </Button>
+          <div className="shrink-0 px-4 pb-4 pt-3 sm:px-6 sm:pb-6 border-t border-dashed border-gray-300 bg-white">
+            <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-3">
+              <Button
+                variant="outline"
+                className="w-full h-11 sm:h-10"
+                onClick={onClose}
+                disabled={busy}
+              >
+                Close
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-11 sm:h-10"
+                onClick={handleDownload}
+                disabled={busy}
+              >
+                <Download className="h-4 w-4 mr-1.5 shrink-0" />
+                Download
+              </Button>
+              <Button
+                className="w-full h-11 sm:h-10 bg-primary text-white"
+                onClick={handlePrint}
+                disabled={busy}
+              >
+                <Printer className="h-4 w-4 mr-1.5 shrink-0" />
+                {busy ? "Preparing…" : "Print Slip"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -140,62 +178,45 @@ function SlipPreview({
   labels: ShippingSlipModalProps["labels"];
 }) {
   return (
-    <div className="py-2 space-y-3 text-sm">
-      <div className="border-2 border-black rounded p-3 text-center">
-        <p className="text-base font-bold tracking-widest">
+    <div className="space-y-3 text-sm">
+      <div className="border-2 border-black rounded-lg p-3 text-center">
+        <p className="text-sm sm:text-base font-bold tracking-wide leading-tight">
           PACKING &amp; SHIPPING SLIP
         </p>
-        <p className="text-[10px] text-gray-500 mt-0.5">
+        <p className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-relaxed">
           Noorani Makatib · attach to the packed box
         </p>
       </div>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-500 font-medium shrink-0">
-          {labels.orderId}:
-        </span>
-        <span className="font-bold text-right">{slip.id}</span>
-      </div>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-500 font-medium shrink-0">
-          {labels.name}:
-        </span>
-        <span className="font-bold text-right">{slip.customer_name}</span>
-      </div>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-500 font-medium shrink-0">
-          {labels.phone}:
-        </span>
-        <span className="font-bold text-right">{slip.customer_phone}</span>
-      </div>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-500 font-medium shrink-0">
-          {labels.shippingAddress}:
-        </span>
-        <span className="font-bold text-right">{slip.customer_address}</span>
-      </div>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-500 font-medium shrink-0">
-          {labels.deliveryMethod}:
-        </span>
-        <span className="font-bold capitalize text-right">
-          {slip.delivery_type}
-        </span>
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50/50 px-3">
+        <SlipField label={labels.orderId} value={slip.id} mono />
+        <SlipField label={labels.name} value={slip.customer_name} />
+        <SlipField label={labels.phone} value={slip.customer_phone} mono />
+        <SlipField label={labels.shippingAddress} value={slip.customer_address} />
+        <SlipField
+          label={labels.deliveryMethod}
+          value={formatDeliveryType(slip.delivery_type)}
+        />
       </div>
 
-      <Separator className="border-dashed my-2" />
+      <Separator className="border-dashed" />
 
       <div>
-        <span className="text-xs text-gray-400 font-bold block mb-1">
-          PACK CONTENT
-        </span>
-        <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 space-y-1">
+        <p className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-2">
+          Pack content · {formatOrderItemsSummary(slip.items)}
+        </p>
+        <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
           {slip.items.map((item, idx) => (
             <div
               key={idx}
-              className="flex justify-between text-xs font-semibold gap-2"
+              className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between px-3 py-2.5"
             >
-              <span className="flex-1">{item.book_name}</span>
-              <span className="shrink-0">x {item.quantity}</span>
+              <span className="text-sm font-medium text-gray-900 break-words">
+                {item.book_name}
+              </span>
+              <span className="text-xs font-bold text-gray-600 shrink-0">
+                {item.quantity} {item.quantity === 1 ? "book" : "books"}
+              </span>
             </div>
           ))}
         </div>

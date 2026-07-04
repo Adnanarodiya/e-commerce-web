@@ -2,6 +2,7 @@
 
 import PackedOrdersPanel, { type PackedOrder } from "@/components/orders/PackedOrdersPanel";
 import ShippingSlipModal, { type ShippingSlipData } from "@/components/packer/ShippingSlipModal";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import Toast from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/context/LanguageContext";
 import { setStaffSession } from "@/lib/staff-session";
+import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
 import { db, supabase } from "@/lib/supabase";
-import { Check, LogOut, Printer } from "lucide-react";
+import { Check, LogOut, PackageCheck, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface Order extends PackedOrder {
@@ -30,12 +32,37 @@ function toSlipData(order: Order): ShippingSlipData {
   };
 }
 
+function OrderSummary({ order }: { order: Order }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 text-sm">
+      <div className="flex justify-between gap-3">
+        <span className="text-xs font-semibold uppercase text-slate-500">Order ID</span>
+        <span className="font-bold font-mono">{order.id}</span>
+      </div>
+      <div className="flex justify-between gap-3">
+        <span className="text-xs font-semibold uppercase text-slate-500">Customer</span>
+        <span className="font-bold text-right">{order.customer_name}</span>
+      </div>
+      <div className="flex justify-between gap-3">
+        <span className="text-xs font-semibold uppercase text-slate-500">Items</span>
+        <span className="font-bold text-right">{formatOrderItemsSummary(order.items)}</span>
+      </div>
+      <div className="flex justify-between gap-3">
+        <span className="text-xs font-semibold uppercase text-slate-500">Delivery</span>
+        <span className="font-bold text-right">{formatDeliveryType(order.delivery_type)}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function PackerDashboard() {
   const { t, isRtl, setUserRole } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<"queue" | "packed">("queue");
   const [printSlip, setPrintSlip] = useState<ShippingSlipData | null>(null);
+  const [boxPackTarget, setBoxPackTarget] = useState<Order | null>(null);
+  const [pickupTarget, setPickupTarget] = useState<Order | null>(null);
   const [packingId, setPackingId] = useState<string | null>(null);
   const [confirmingPickupId, setConfirmingPickupId] = useState<string | null>(null);
   const [toast, setToast] = useState({ message: "", visible: false });
@@ -75,9 +102,10 @@ export default function PackerDashboard() {
     setPrintSlip(toSlipData(order));
   };
 
-  const handleBoxPack = async (order: Order) => {
-    if (!window.confirm(t("confirmBoxPack"))) return;
+  const confirmBoxPack = async () => {
+    if (!boxPackTarget) return;
 
+    const order = boxPackTarget;
     setPackingId(order.id);
     try {
       const success = await db.updateOrderStatus(order.id, "packed", true);
@@ -94,6 +122,7 @@ export default function PackerDashboard() {
           message: isRtl ? `آرڈر ${order.id} پیک ہو گیا` : `Order ${order.id} marked as packed`,
           visible: true,
         });
+        setBoxPackTarget(null);
         setActiveView("packed");
       }
     } catch (err) {
@@ -103,9 +132,10 @@ export default function PackerDashboard() {
     }
   };
 
-  const handleConfirmPickup = async (orderId: string) => {
-    if (!window.confirm(t("confirmPickupPrompt"))) return;
+  const confirmPickup = async () => {
+    if (!pickupTarget) return;
 
+    const orderId = pickupTarget.id;
     setConfirmingPickupId(orderId);
     try {
       const success = await db.confirmPickup(orderId);
@@ -122,6 +152,7 @@ export default function PackerDashboard() {
           message: isRtl ? "پک اپ کی تصدیق ہو گئی" : "Pickup confirmed",
           visible: true,
         });
+        setPickupTarget(null);
       }
     } catch (err) {
       console.error(err);
@@ -228,8 +259,8 @@ export default function PackerDashboard() {
                         <CardTitle className="text-sm font-bold">{order.customer_name}</CardTitle>
                         <CardDescription className="text-xs">{order.id}</CardDescription>
                       </div>
-                      <Badge variant="outline" className="text-[10px] capitalize">
-                        {order.delivery_type}
+                      <Badge variant="outline" className="text-[10px]">
+                        {formatDeliveryType(order.delivery_type)}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -249,7 +280,9 @@ export default function PackerDashboard() {
                       {order.items.map((item, idx) => (
                         <div key={idx} className="flex justify-between">
                           <span>{item.book_name}</span>
-                          <span className="font-bold">x{item.quantity}</span>
+                          <span className="font-bold">
+                            {item.quantity} {item.quantity === 1 ? "book" : "books"}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -261,7 +294,7 @@ export default function PackerDashboard() {
                       <Button
                         size="sm"
                         className="h-9 text-xs bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => handleBoxPack(order)}
+                        onClick={() => setBoxPackTarget(order)}
                         disabled={packingId === order.id}
                       >
                         <Check className="h-3.5 w-3.5 mr-1" />
@@ -277,11 +310,44 @@ export default function PackerDashboard() {
       ) : (
         <PackedOrdersPanel
           orders={orders}
-          onConfirmPickup={handleConfirmPickup}
+          onConfirmPickup={(orderId) => {
+            const order = orders.find((o) => o.id === orderId);
+            if (order) setPickupTarget(order);
+          }}
           onPrintSlip={(o) => handlePrintSlip(o as Order)}
           confirmingId={confirmingPickupId}
         />
       )}
+
+      <ConfirmModal
+        open={!!boxPackTarget}
+        title={t("boxPack")}
+        description={t("confirmBoxPack")}
+        confirmLabel={t("boxPack")}
+        cancelLabel={t("cancel")}
+        onConfirm={confirmBoxPack}
+        onCancel={() => setBoxPackTarget(null)}
+        loading={!!packingId}
+        headerTone="green"
+        icon={<Check className="h-5 w-5 text-white" />}
+      >
+        {boxPackTarget ? <OrderSummary order={boxPackTarget} /> : null}
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={!!pickupTarget}
+        title={t("confirmPickup")}
+        description={t("confirmPickupPrompt")}
+        confirmLabel={t("confirmPickup")}
+        cancelLabel={t("cancel")}
+        onConfirm={confirmPickup}
+        onCancel={() => setPickupTarget(null)}
+        loading={!!confirmingPickupId}
+        headerTone="slate"
+        icon={<PackageCheck className="h-5 w-5 text-white" />}
+      >
+        {pickupTarget ? <OrderSummary order={pickupTarget} /> : null}
+      </ConfirmModal>
 
       {printSlip && (
         <ShippingSlipModal
@@ -293,7 +359,7 @@ export default function PackerDashboard() {
             name: t("name"),
             phone: t("phone"),
             shippingAddress: t("shippingAddress"),
-            deliveryMethod: t("deliveryMethod"),
+            deliveryMethod: t("deliveryLabel"),
           }}
           onClose={() => setPrintSlip(null)}
         />

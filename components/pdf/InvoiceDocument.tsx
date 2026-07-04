@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { InvoiceData, InvoiceItem } from "@/lib/invoice";
+import { formatDeliveryType, formatMoneyPdf } from "@/lib/format-order";
 
 export type { InvoiceData, InvoiceItem };
 
@@ -188,7 +189,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff8e7",
   },
   payLine: { fontSize: 10, color: SLATE_700, marginBottom: 2 },
-  payNote: { fontSize: 8.5, color: ORANGE_DARK, marginTop: 4 },
   footer: {
     position: "absolute",
     bottom: 24,
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   },
 });
 
-const money = (n: number) => `₹${n.toFixed(2)}`;
+const money = formatMoneyPdf;
 
 function ItemRow({ item, idx }: { item: InvoiceItem; idx: number }) {
   const amount = item.price * item.quantity;
@@ -311,7 +311,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <Text style={styles.valueText}>
                 Delivery:{" "}
                 <Text style={styles.valueBold}>
-                  {data.delivery_type.toUpperCase()}
+                  {formatDeliveryType(data.delivery_type)}
                 </Text>
               </Text>
             </View>
@@ -347,7 +347,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           {quranDisc > 0 && (
             <View style={styles.discountRow}>
               <Text style={{ fontSize: 10, color: EMERALD }}>
-                Quran discount (₹25/copy)
+                Quran discount (Rs. 25 per copy)
               </Text>
               <Text
                 style={[
@@ -399,7 +399,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <Text style={styles.payBlockLeftText}>
                 PAYMENT
                 {"\n"}
-                DETAILS
+                RECEIVED
               </Text>
             </View>
             <View style={styles.payBlockRight}>
@@ -416,10 +416,6 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <Text style={styles.payLine}>
                 Amount Paid:{" "}
                 <Text style={styles.valueBold}>{money(data.total)}</Text>
-              </Text>
-              <Text style={styles.payNote}>
-                Kindly transfer the invoice total to the above UPI ID to
-                confirm your order with Noorani Makatib.
               </Text>
             </View>
           </View>

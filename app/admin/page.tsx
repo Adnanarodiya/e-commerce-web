@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { downloadInvoicePdf } from "@/lib/pdf-download";
+import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
+import { useLockBodyScroll } from "@/lib/use-lock-body-scroll";
 import StockAlertCards from "@/components/admin/StockAlertCards";
 import StockManagementPanel from "@/components/admin/StockManagementPanel";
 
@@ -112,6 +114,8 @@ export default function AdminDashboard() {
     image: "",
     is_quran: false
   });
+
+  useLockBodyScroll(!!callModal || isBookModalOpen);
 
   // Fetch all data
   const loadData = async () => {
@@ -1085,7 +1089,7 @@ export default function AdminDashboard() {
       {/* Ready-to-pack confirmation modal */}
       {callModal && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overscroll-none touch-none"
           onClick={() => setCallModal(null)}
           role="presentation"
         >
@@ -1180,7 +1184,7 @@ export default function AdminDashboard() {
                     Delivery
                   </span>
                   <span className="text-sm font-bold text-slate-900 capitalize text-right">
-                    {callModal.delivery_type}
+                    {formatDeliveryType(callModal.delivery_type)}
                   </span>
                 </div>
 
@@ -1190,15 +1194,13 @@ export default function AdminDashboard() {
                   </span>
                   <div className="text-sm text-slate-800 text-right space-y-1">
                     <p className="font-bold">
-                      {callModal.items.reduce((sum, it) => sum + it.quantity, 0)} copies
-                      {" · "}
-                      {callModal.items.length}{" "}
-                      {callModal.items.length === 1 ? "title" : "titles"}
+                      {formatOrderItemsSummary(callModal.items)}
                     </p>
                     <ul className="text-xs text-slate-600 space-y-0.5">
                       {callModal.items.slice(0, 4).map((item) => (
                         <li key={item.id}>
-                          {item.book_name} × {item.quantity}
+                          {item.book_name} — {item.quantity}{" "}
+                          {item.quantity === 1 ? "book" : "books"}
                         </li>
                       ))}
                       {callModal.items.length > 4 && (
@@ -1239,7 +1241,7 @@ export default function AdminDashboard() {
 
       {/* CRUD Book edit/add modal */}
       {isBookModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overscroll-none touch-none">
           <form onSubmit={handleSaveBook} className="bg-white rounded-sm p-4 sm:p-6 max-w-lg w-full space-y-4 shadow-lg border overflow-y-auto max-h-[90vh] mx-2 sm:mx-0">
             <h3 className="text-lg font-bold text-slate-800">
               {editingBook ? "Edit Book details" : "Add new book to store"}
