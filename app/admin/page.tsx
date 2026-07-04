@@ -14,10 +14,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  TrendingUp, BarChart3, BookOpen, AlertTriangle,
-  Settings, Layers, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload
+  TrendingUp, BarChart3, BookOpen,
+  Settings, Layers, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package
 } from "lucide-react";
 import Image from "next/image";
+import { downloadInvoicePdf } from "@/lib/pdf-download";
+import StockAlertCards from "@/components/admin/StockAlertCards";
+import StockManagementPanel from "@/components/admin/StockManagementPanel";
+
+const LOW_STOCK_THRESHOLD = 5;
 
 interface Book {
   id: number;
@@ -29,6 +34,7 @@ interface Book {
   image: string;
   stock: number;
   weight: number;
+  is_quran?: boolean;
 }
 
 interface OrderItem {
@@ -38,6 +44,7 @@ interface OrderItem {
   book_name: string;
   quantity: number;
   price: number;
+  is_quran?: boolean;
 }
 
 interface Order {
@@ -62,7 +69,7 @@ interface Order {
 }
 
 export default function AdminDashboard() {
-  const { t, isRtl, setUserRole } = useLanguage();
+  const { t, setUserRole } = useLanguage();
   const [books, setBooks] = useState<Book[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [upiSettings, setUpiSettings] = useState({
@@ -75,10 +82,13 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<"day" | "month" | "year">("month");
   const [reorderAmount, setReorderAmount] = useState<Record<number, number>>({});
+  const [setStockDraft, setSetStockDraft] = useState<Record<number, string>>({});
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [statementRange, setStatementRange] = useState<"today" | "week" | "month" | "year" | "all">("today");
+  const [statementMode, setStatementMode] = useState<"bank" | "cash">("bank");
 
   // Call simulation modal state
-  const [callModal, setCallModal] = useState<{ open: boolean; orderId: string; phone: string; name: string } | null>(null);
+  const [callModal, setCallModal] = useState<Order | null>(null);
 
   // QR Code edit state
   const [tempUpiSettings, setTempUpiSettings] = useState({ ...upiSettings });
@@ -97,10 +107,11 @@ export default function AdminDashboard() {
     name_ur: "",
     price: "",
     stock: "",
-    weight: "",
+    weight: "80",
     description_en: "",
     description_ur: "",
-    image: ""
+    image: "",
+    is_quran: false
   });
 
   // Fetch all data
@@ -182,7 +193,8 @@ export default function AdminDashboard() {
   const totalStockQuantity = books.reduce((sum, b) => sum + b.stock, 0);
   const totalStockValue = books.reduce((sum, b) => sum + b.price * b.stock, 0);
   const outOfStockBooks = books.filter(b => b.stock === 0);
-  const lowStockBooks = books.filter(b => b.stock > 0 && b.stock <= 3);
+  const lowStockBooks = books.filter(b => b.stock > 0 && b.stock < LOW_STOCK_THRESHOLD);
+  const criticalStockCount = outOfStockBooks.length + lowStockBooks.length;
 
   // Earnings calculations filter
   const getFilteredOrders = () => {
@@ -211,16 +223,16 @@ export default function AdminDashboard() {
   const totalEarnings = bankEarnings + cashEarnings;
 
   // Actions
-  const handleReadyToPackClick = (orderId: string, phone: string, name: string) => {
-    setCallModal({ open: true, orderId, phone, name });
+  const handleReadyToPackClick = (order: Order) => {
+    setCallModal(order);
   };
 
   const confirmReadyToPack = async () => {
     if (!callModal) return;
     try {
-      const success = await db.updateOrderStatus(callModal.orderId, "ready_to_pack");
+      const success = await db.updateOrderStatus(callModal.id, "ready_to_pack");
       if (success) {
-        setOrders(prev => prev.map(o => o.id === callModal.orderId ? { ...o, status: "ready_to_pack" } : o));
+        setOrders(prev => prev.map(o => o.id === callModal.id ? { ...o, status: "ready_to_pack" } : o));
       }
     } catch (err) {
       console.error(err);
@@ -239,9 +251,28 @@ export default function AdminDashboard() {
         await db.updateBook(id, { stock: newStock });
         setBooks(prev => prev.map(b => b.id === id ? { ...b, stock: newStock } : b));
         setReorderAmount(prev => ({ ...prev, [id]: 0 }));
+        setToast({ message: `Added ${qty} to "${book.name_en}" — now ${newStock} in stock`, visible: true });
       }
     } catch (err) {
       console.error(err);
+      setToast({ message: "Failed to update stock", visible: true });
+    }
+  };
+
+  const handleSetStock = async (id: number) => {
+    const raw = setStockDraft[id];
+    const newStock = parseInt(raw, 10);
+    if (Number.isNaN(newStock) || newStock < 0) return;
+    try {
+      const book = books.find(b => b.id === id);
+      if (!book) return;
+      await db.updateBook(id, { stock: newStock });
+      setBooks(prev => prev.map(b => b.id === id ? { ...b, stock: newStock } : b));
+      setSetStockDraft(prev => ({ ...prev, [id]: "" }));
+      setToast({ message: `"${book.name_en}" stock set to ${newStock}`, visible: true });
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Failed to set stock", visible: true });
     }
   };
 
@@ -279,7 +310,8 @@ export default function AdminDashboard() {
       weight: "80",
       description_en: "",
       description_ur: "",
-      image: ""
+      image: "",
+      is_quran: false
     });
     setIsBookModalOpen(true);
   };
@@ -294,7 +326,8 @@ export default function AdminDashboard() {
       weight: String(book.weight ?? 80),
       description_en: book.description_en || "",
       description_ur: book.description_ur || "",
-      image: book.image
+      image: book.image,
+      is_quran: book.is_quran ?? false
     });
     setIsBookModalOpen(true);
   };
@@ -309,7 +342,8 @@ export default function AdminDashboard() {
       weight: Number(bookFormData.weight) || 80,
       description_en: bookFormData.description_en,
       description_ur: bookFormData.description_ur,
-      image: bookFormData.image
+      image: bookFormData.image,
+      is_quran: bookFormData.is_quran
     };
 
     try {
@@ -364,6 +398,56 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDownloadBill = async (order: Order) => {
+    try {
+      // Re-enrich order_items with is_quran flag from the loaded books catalog
+      const isQuranById = new Map<number, boolean>();
+      books.forEach((b) => isQuranById.set(b.id, b.is_quran ?? false));
+
+      // Re-derive Quran / percentage discount breakdown from order totals
+      const quranSubtotal = order.items
+        .filter((it) => isQuranById.get(it.book_id) ?? false)
+        .reduce((sum, it) => sum + it.price * it.quantity, 0);
+      const nonQuranSubtotal = order.subtotal - quranSubtotal;
+      const quranQty = order.items
+        .filter((it) => isQuranById.get(it.book_id) ?? false)
+        .reduce((sum, it) => sum + it.quantity, 0);
+      const quranDiscount = Math.min(quranSubtotal, quranQty * 25);
+
+      let percentageDiscount = 0;
+      if (order.subtotal >= 5000 && nonQuranSubtotal > 0) {
+        const rate = order.payment_type === "bank" ? 0.1 : 0.15;
+        percentageDiscount = nonQuranSubtotal * rate;
+      }
+
+      await downloadInvoicePdf({
+        id: order.id,
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone,
+        customer_address: order.customer_address,
+        delivery_type: order.delivery_type,
+        payment_type: order.payment_type,
+        subtotal: order.subtotal,
+        discount: order.discount,
+        quranDiscount,
+        percentageDiscount,
+        packaging_charge: order.packaging_charge,
+        total: order.total,
+        created_at: order.created_at,
+        items: order.items.map((it) => ({
+          ...it,
+          is_quran: isQuranById.get(it.book_id) ?? false,
+        })),
+        upi_id: upiSettings.upi_id,
+        payee_name: upiSettings.payee_name,
+      });
+    } catch (err) {
+      console.error("Invoice generation failed:", err);
+      alert("Could not generate invoice. See console for details.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center py-32 space-y-4">
@@ -375,7 +459,6 @@ export default function AdminDashboard() {
 
   // Admin View
   const pendingOrders = orders.filter(o => o.status === "pending");
-  const packedOrders = orders.filter(o => o.status === "packed");
 
   const tabs: {
     id: string;
@@ -384,7 +467,9 @@ export default function AdminDashboard() {
     badge?: number;
   }[] = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "orders", label: "Orders", icon: Truck, badge: pendingOrders.length },
+    { id: "stock", label: "Stock", icon: Package, badge: criticalStockCount || undefined },
+    { id: "orders", label: "Orders", icon: Truck, badge: pendingOrders.length || undefined },
+    { id: "statement", label: "Statement", icon: ReceiptText },
     { id: "books", label: "Inventory", icon: BookOpen },
     { id: "settings", label: "Settings", icon: Settings },
   ];
@@ -416,22 +501,24 @@ export default function AdminDashboard() {
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
         <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-          <nav className="flex md:flex-col gap-0 md:w-44 shrink-0 border border-border bg-white overflow-x-auto md:overflow-visible">
+          <nav className="flex md:flex-col gap-0 md:w-48 shrink-0 border border-border bg-white rounded-xl shadow-sm overflow-x-auto md:overflow-visible md:sticky md:top-4 md:self-start md:max-h-[calc(100vh-2rem)] md:overflow-y-auto">
             {tabs.map(({ id, label, icon: Icon, badge }) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-2 px-4 py-3 text-left text-xs sm:text-sm font-medium border-b md:border-b-0 md:border-l-2 border-border last:border-b-0 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-2.5 px-4 py-3 text-left text-xs sm:text-sm font-semibold border-b md:border-b-0 md:border-l-[3px] border-border last:border-b-0 transition-colors whitespace-nowrap ${
                   activeTab === id
-                    ? "bg-slate-50 text-slate-900 md:border-l-primary border-l-transparent"
+                    ? "bg-primary/10 text-primary md:border-l-primary border-l-transparent"
                     : "text-muted-foreground hover:bg-slate-50 hover:text-foreground md:border-l-transparent"
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 <span>{label}</span>
                 {badge ? (
-                  <Badge className="ml-auto bg-red-600 text-white border-0 text-[10px] px-1.5">{badge}</Badge>
+                  <Badge className={`ml-auto border-0 text-[10px] px-1.5 ${
+                    id === "stock" ? "bg-red-600 text-white" : "bg-primary text-primary-foreground"
+                  }`}>{badge}</Badge>
                 ) : null}
               </button>
             ))}
@@ -443,7 +530,7 @@ export default function AdminDashboard() {
         {activeTab === "dashboard" && (
           <>
             {/* Filters and Stats */}
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-white p-3 border border-border">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-white p-4 border border-border rounded-xl shadow-sm">
               <span className="text-sm font-semibold text-muted-foreground">{t("filterBy")}</span>
               <div className="flex gap-1.5">
                 <Button size="sm" variant={timeFilter === "day" ? "default" : "outline"} onClick={() => setTimeFilter("day")}>Today</Button>
@@ -452,8 +539,8 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-              <Card className="shadow-sm">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <Card className="shadow-sm rounded-xl border border-border">
                 <CardContent className="p-3 sm:p-6">
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0">
@@ -468,7 +555,7 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border border-border">
+              <Card className="shadow-sm rounded-xl border border-border">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start">
                     <div>
@@ -483,7 +570,7 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border border-border">
+              <Card className="shadow-sm rounded-xl border border-border">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start">
                     <div>
@@ -498,7 +585,7 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border border-border">
+              <Card className="shadow-sm rounded-xl border border-border">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start">
                     <div>
@@ -514,81 +601,20 @@ export default function AdminDashboard() {
               </Card>
             </div>
 
-            {/* Low Stock Alerts */}
-            {(outOfStockBooks.length > 0 || lowStockBooks.length > 0) && (
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Out of Stock */}
-                {outOfStockBooks.length > 0 && (
-                  <Card className="border-red-200 bg-red-50/10">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-bold flex items-center gap-2 text-destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        Out of Stock ({outOfStockBooks.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {outOfStockBooks.map(book => (
-                        <div key={book.id} className="flex justify-between items-center border-b border-red-100 pb-2 last:border-0 last:pb-0 text-xs">
-                          <div>
-                            <span className="font-semibold text-slate-800">{book.name_en}</span>
-                            <span className="block text-[10px] text-muted-foreground">{book.name_ur}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Input
-                              type="number"
-                              placeholder="Qty"
-                              className="w-14 h-7 text-xs px-1.5"
-                              value={reorderAmount[book.id] || ""}
-                              onChange={e => setReorderAmount(prev => ({ ...prev, [book.id]: parseInt(e.target.value) || 0 }))}
-                            />
-                            <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => handleUpdateStock(book.id)}>
-                              Reorder
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Low Stock */}
-                {lowStockBooks.length > 0 && (
-                  <Card className="border-amber-200 bg-amber-50/10">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-bold flex items-center gap-2 text-amber-700">
-                        <AlertTriangle className="h-4 w-4" />
-                        Low Stock Alert ({lowStockBooks.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {lowStockBooks.map(book => (
-                        <div key={book.id} className="flex justify-between items-center border-b border-amber-100 pb-2 last:border-0 last:pb-0 text-xs">
-                          <div>
-                            <span className="font-semibold text-slate-800">{book.name_en}</span>
-                            <span className="block text-[10px] text-amber-600">Qty remaining: {book.stock}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Input
-                              type="number"
-                              placeholder="Qty"
-                              className="w-14 h-7 text-xs px-1.5"
-                              value={reorderAmount[book.id] || ""}
-                              onChange={e => setReorderAmount(prev => ({ ...prev, [book.id]: parseInt(e.target.value) || 0 }))}
-                            />
-                            <Button size="sm" className="h-7 text-xs px-2 bg-amber-600 hover:bg-amber-700 text-white" onClick={() => handleUpdateStock(book.id)}>
-                              Update
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
+            {/* Stock alerts — prominent on dashboard */}
+            <StockAlertCards
+              outOfStock={outOfStockBooks}
+              lowStock={lowStockBooks}
+              reorderAmount={reorderAmount}
+              onReorderChange={(id, qty) =>
+                setReorderAmount((prev) => ({ ...prev, [id]: qty }))
+              }
+              onAddStock={handleUpdateStock}
+              onViewAll={() => setActiveTab("stock")}
+            />
 
             {/* Ledger Statement */}
-            <Card>
+            <Card className="rounded-xl shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg font-bold">{t("ledger")}</CardTitle>
                 <CardDescription>Statements of completed Bank & Cash earnings in filtered period ({timeFilter})</CardDescription>
@@ -607,11 +633,12 @@ export default function AdminDashboard() {
                       ) : (
                         filteredOrders.filter(o => o.payment_type === "bank" && o.status !== "pending").map((order, idx) => (
                           <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/30">
-                            <div>
+                            <div className="min-w-0">
                               <span className="font-bold text-slate-700 block">{order.id}</span>
-                              <span className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString()} | {order.customer_name}</span>
+                              <span className="text-[10px] text-muted-foreground block">{new Date(order.created_at).toLocaleDateString()} | {order.customer_name}</span>
+                              <span className="text-[10px] text-blue-600 font-mono block truncate">UPI: {upiSettings.upi_id}</span>
                             </div>
-                            <span className="font-bold text-blue-600">₹{order.total.toFixed(2)}</span>
+                            <span className="font-bold text-blue-600 shrink-0">₹{order.total.toFixed(2)}</span>
                           </div>
                         ))
                       )}
@@ -644,6 +671,37 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </>
+        )}
+
+        {/* Stock manager — out of stock & low stock (< 5) */}
+        {activeTab === "stock" && (
+          <div className="space-y-4">
+            <div className="bg-white p-4 border border-border rounded-xl shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900">Stock Manager</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Restock out-of-stock titles and low inventory (fewer than {LOW_STOCK_THRESHOLD} copies).
+                Add quantity or set an exact stock level, then edit full book details if needed.
+              </p>
+            </div>
+            <StockManagementPanel
+              books={books}
+              lowStockThreshold={LOW_STOCK_THRESHOLD}
+              reorderAmount={reorderAmount}
+              setStockDraft={setStockDraft}
+              onReorderChange={(id, qty) =>
+                setReorderAmount((prev) => ({ ...prev, [id]: qty }))
+              }
+              onSetStockDraftChange={(id, value) =>
+                setSetStockDraft((prev) => ({ ...prev, [id]: value }))
+              }
+              onAddStock={handleUpdateStock}
+              onSetStock={handleSetStock}
+              onEditBook={(b) => {
+                const full = books.find((x) => x.id === b.id);
+                if (full) handleOpenEditBook(full);
+              }}
+            />
+          </div>
         )}
 
         {/* Tab 2: Orders List & Ready to Pack */}
@@ -684,13 +742,24 @@ export default function AdminDashboard() {
                             <span className="text-muted-foreground block">Total Amount</span>
                             <span className="text-md font-bold text-primary">₹{order.total.toFixed(2)}</span>
                           </div>
-                          <Button 
-                            className="bg-primary hover:bg-primary/95 text-white font-bold"
-                            onClick={() => handleReadyToPackClick(order.id, order.customer_phone, order.customer_name)}
-                          >
-                            <PhoneCall className="h-4 w-4 mr-2" />
-                            Ready to Pack
-                          </Button>
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 text-xs"
+                              onClick={() => handleDownloadBill(order)}
+                            >
+                              <Download className="h-3.5 w-3.5 mr-1" />
+                              Download Bill
+                            </Button>
+                            <Button
+                              className="bg-primary hover:bg-primary/95 text-white font-bold"
+                              onClick={() => handleReadyToPackClick(order)}
+                            >
+                              <PhoneCall className="h-4 w-4 mr-2" />
+                              Ready to Pack
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -730,6 +799,7 @@ export default function AdminDashboard() {
                 <PackedOrdersPanel
                   orders={orders}
                   onConfirmPickup={handleConfirmPickup}
+                  onDownloadBill={(order) => handleDownloadBill(order as Order)}
                   confirmingId={confirmingPickupId}
                 />
               </CardContent>
@@ -737,7 +807,164 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* Tab 3: Books Inventory (CRUD) */}
+        {/* Tab 3: Statement (Cash + Bank ledger audit) */}
+        {activeTab === "statement" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <ReceiptText className="h-5 w-5" />
+                Financial Statement
+              </CardTitle>
+              <CardDescription>
+                Full audit of Cash &amp; Bank earnings. Filter by period, then toggle between Bank and Cash ledgers. Bank rows include the UPI ID from your payment settings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Range filter */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-muted-foreground uppercase mr-1">Period:</span>
+                {([
+                  { id: "today", label: "Today" },
+                  { id: "week", label: "1 Week" },
+                  { id: "month", label: "1 Month" },
+                  { id: "year", label: "1 Year" },
+                  { id: "all", label: "All Time" },
+                ] as const).map(({ id, label }) => (
+                  <Button
+                    key={id}
+                    size="sm"
+                    variant={statementRange === id ? "default" : "outline"}
+                    onClick={() => setStatementRange(id)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Mode tabs */}
+              <div className="flex border border-border bg-white">
+                <button
+                  type="button"
+                  onClick={() => setStatementMode("bank")}
+                  className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-2 ${
+                    statementMode === "bank"
+                      ? "border-blue-600 text-blue-700 bg-blue-50"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Banknote className="h-4 w-4" />
+                  Bank / UPI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatementMode("cash")}
+                  className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-2 ${
+                    statementMode === "cash"
+                      ? "border-green-600 text-green-700 bg-green-50"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Wallet className="h-4 w-4" />
+                  Cash
+                </button>
+              </div>
+
+              {/* Statement table */}
+              {(() => {
+                const now = new Date();
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay());
+                weekStart.setHours(0, 0, 0, 0);
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                const yearStart = new Date(now.getFullYear(), 0, 1);
+
+                const inRange = (dateStr: string) => {
+                  const d = new Date(dateStr);
+                  if (statementRange === "all") return true;
+                  if (statementRange === "today") return d.toDateString() === now.toDateString();
+                  if (statementRange === "week") return d >= weekStart;
+                  if (statementRange === "month") return d >= monthStart;
+                  if (statementRange === "year") return d >= yearStart;
+                  return true;
+                };
+
+                const rows = orders
+                  .filter(
+                    (o) =>
+                      o.payment_type === (statementMode === "bank" ? "bank" : "cash") &&
+                      o.status !== "pending" &&
+                      inRange(o.created_at)
+                  )
+                  .sort(
+                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                  );
+
+                const total = rows.reduce((sum, o) => sum + o.total, 0);
+
+                if (rows.length === 0) {
+                  return (
+                    <div className="p-12 text-center border-dashed border-2 text-sm text-muted-foreground">
+                      No {statementMode} transactions in this period.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full text-xs sm:text-sm">
+                      <thead className="bg-muted/50 text-muted-foreground">
+                        <tr>
+                          <th className="text-left font-bold p-3 whitespace-nowrap">Date</th>
+                          <th className="text-left font-bold p-3 whitespace-nowrap">Order ID</th>
+                          <th className="text-left font-bold p-3 whitespace-nowrap">Customer</th>
+                          {statementMode === "bank" && (
+                            <th className="text-left font-bold p-3 whitespace-nowrap">UPI ID</th>
+                          )}
+                          <th className="text-right font-bold p-3 whitespace-nowrap">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((order) => (
+                          <tr key={order.id} className="border-t hover:bg-muted/30">
+                            <td className="p-3 whitespace-nowrap text-muted-foreground">
+                              {new Date(order.created_at).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "2-digit",
+                              })}
+                            </td>
+                            <td className="p-3 font-bold text-slate-700 whitespace-nowrap">{order.id}</td>
+                            <td className="p-3 whitespace-nowrap">{order.customer_name}</td>
+                            {statementMode === "bank" && (
+                              <td className="p-3 text-blue-700 font-mono text-[11px] whitespace-nowrap">
+                                {upiSettings.upi_id}
+                              </td>
+                            )}
+                            <td className={`p-3 text-right font-bold whitespace-nowrap ${statementMode === "bank" ? "text-blue-600" : "text-green-600"}`}>
+                              ₹{order.total.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 bg-muted/40">
+                          <td className="p-3 font-bold" colSpan={statementMode === "bank" ? 3 : 2}>
+                            Total ({rows.length} transactions)
+                          </td>
+                          <td className={`p-3 text-right font-bold ${statementMode === "bank" ? "text-blue-700" : "text-green-700"}`}>
+                            ₹{total.toFixed(2)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tab 4: Books Inventory (CRUD) */}
         {activeTab === "books" && (
           <Card>
             <CardHeader className="flex flex-row justify-between items-center">
@@ -764,12 +991,15 @@ export default function AdminDashboard() {
                           <h5 className="text-xs text-muted-foreground truncate">{book.name_ur}</h5>
                           <div className="flex gap-2 mt-1.5 items-center">
                             <span className="font-bold text-xs">₹{book.price}</span>
-                            <Badge variant={book.stock === 0 ? "destructive" : book.stock <= 3 ? "secondary" : "outline"} className="text-[10px]">
+                            <Badge variant={book.stock === 0 ? "destructive" : book.stock < LOW_STOCK_THRESHOLD ? "secondary" : "outline"} className={`text-[10px] ${book.stock > 0 && book.stock < LOW_STOCK_THRESHOLD ? "bg-amber-100 text-amber-800 border-amber-300" : ""}`}>
                               Stock: {book.stock}
                             </Badge>
                             <Badge variant="outline" className="text-[10px] text-muted-foreground">
                               {book.weight ?? 80}g
                             </Badge>
+                            {book.is_quran && (
+                              <Badge className="text-[10px] bg-emerald-600 text-white border-0">Quran</Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -876,35 +1106,156 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Confirmation modal for simulated calls */}
+      {/* Ready-to-pack confirmation modal */}
       {callModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-sm p-6 max-w-sm w-full text-center space-y-4 shadow-lg border border-gray-200">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-              <PhoneCall className="h-6 w-6 text-primary animate-bounce" />
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-lg font-bold text-slate-800">{t("confirmPackTitle")}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Calling <strong className="text-slate-800 font-bold">{callModal.name}</strong> at <strong className="text-slate-800 font-bold">{callModal.phone}</strong> for confirmation...
-              </p>
-              <div className="p-3 bg-slate-100 rounded-lg text-xs font-semibold text-slate-600 flex justify-center items-center gap-2 border">
-                <span>⚡ Simulate Call Status: Connected</span>
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setCallModal(null)}
+          role="presentation"
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-primary px-5 py-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                  <PhoneCall className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-lg font-bold text-white leading-tight">
+                    {t("confirmPackTitle")}
+                  </h3>
+                  <p className="text-sm text-white/85 mt-0.5">
+                    Verify with customer before sending to packer
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setCallModal(null)}
+                className="p-1.5 rounded-full hover:bg-white/20 shrink-0"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5 text-white" />
+              </button>
             </div>
 
-            <p className="text-xs text-slate-600 leading-normal">
-              Confirm with customer: Order details, Book types & quantities, Courier type, and Payment status. Once confirmed, assign to the packer.
-            </p>
+            <div className="p-5 space-y-4 text-left">
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {t("confirmPackPrompt").replace("{phone}", callModal.customer_phone)}
+              </p>
 
-            <div className="flex gap-3 pt-2">
-              <Button variant="outline" className="flex-1 text-xs" onClick={() => setCallModal(null)}>
-                {t("cancel")}
-              </Button>
-              <Button className="flex-1 text-xs bg-primary text-white font-bold" onClick={confirmReadyToPack}>
-                {t("confirm")}
-              </Button>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Order ID
+                  </span>
+                  <span className="text-sm font-bold text-slate-900 font-mono">
+                    {callModal.id}
+                  </span>
+                </div>
+
+                <Separator className="bg-slate-200" />
+
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Customer
+                  </span>
+                  <span className="text-sm font-bold text-slate-900 text-right">
+                    {callModal.customer_name}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Phone
+                  </span>
+                  <a
+                    href={`tel:${callModal.customer_phone.replace(/\s/g, "")}`}
+                    className="text-sm font-bold text-primary hover:underline text-right"
+                  >
+                    {callModal.customer_phone}
+                  </a>
+                </div>
+
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Payment
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                    {callModal.payment_type === "bank" ? (
+                      <>
+                        <Banknote className="h-4 w-4 text-blue-600" />
+                        Bank / UPI
+                      </>
+                    ) : (
+                      <>
+                        <Wallet className="h-4 w-4 text-emerald-600" />
+                        Cash on Delivery
+                      </>
+                    )}
+                    <span className="text-primary">· ₹{callModal.total.toFixed(2)}</span>
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Delivery
+                  </span>
+                  <span className="text-sm font-bold text-slate-900 capitalize text-right">
+                    {callModal.delivery_type}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-start gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">
+                    Items
+                  </span>
+                  <div className="text-sm text-slate-800 text-right space-y-1">
+                    <p className="font-bold">
+                      {callModal.items.reduce((sum, it) => sum + it.quantity, 0)} copies
+                      {" · "}
+                      {callModal.items.length}{" "}
+                      {callModal.items.length === 1 ? "title" : "titles"}
+                    </p>
+                    <ul className="text-xs text-slate-600 space-y-0.5">
+                      {callModal.items.slice(0, 4).map((item) => (
+                        <li key={item.id}>
+                          {item.book_name} × {item.quantity}
+                        </li>
+                      ))}
+                      {callModal.items.length > 4 && (
+                        <li className="text-slate-400">
+                          +{callModal.items.length - 4} more…
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Confirm order details, book quantities, courier type, and payment
+                status with the customer. Once verified, assign to the packer.
+              </p>
+
+              <div className="flex gap-3 pt-1">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setCallModal(null)}
+                >
+                  {t("cancel")}
+                </Button>
+                <Button
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  onClick={confirmReadyToPack}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Send to Packer
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1039,6 +1390,16 @@ export default function AdminDashboard() {
                 className="text-right"
               />
             </div>
+
+            <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={bookFormData.is_quran}
+                onChange={e => setBookFormData(prev => ({ ...prev, is_quran: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer shrink-0"
+              />
+              <span>Mark as <span className="font-bold text-emerald-700">Quran Sharif</span> — flat ₹25/copy discount, no % discount applied</span>
+            </label>
 
             <div className="flex gap-3 pt-2 justify-end text-xs">
               <Button type="button" variant="outline" onClick={() => setIsBookModalOpen(false)}>Cancel</Button>

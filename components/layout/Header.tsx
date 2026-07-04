@@ -2,11 +2,21 @@
 
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { db } from "@/lib/supabase";
 import { hasStaffSession } from "@/lib/staff-session";
 import { Menu, Search, ShoppingCart, X, Globe } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+interface SearchBook {
+  id: number;
+  name_en: string;
+  name_ur: string;
+  price: number;
+  image: string;
+  stock: number;
+}
 
 export default function Header() {
   const { cart } = useCart();
@@ -17,8 +27,11 @@ export default function Header() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [staff, setStaff] = useState({ admin: false, packer: false });
+  const [allBooks, setAllBooks] = useState<SearchBook[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -38,6 +51,74 @@ export default function Header() {
     });
   }, [pathname]);
 
+  // Load book catalog once for client-side search
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const books = await db.getBooks();
+        if (!cancelled) {
+          setAllBooks(
+            books.map((b) => ({
+              id: b.id,
+              name_en: b.name_en,
+              name_ur: b.name_ur,
+              price: Number(b.price),
+              image: b.image,
+              stock: b.stock,
+            }))
+          );
+          console.debug("[search] catalog loaded:", books.length, "books");
+        }
+      } catch (err) {
+        console.error("[search] failed to load catalog:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Debounce search query
+  useEffect(() => {
+    setSearchLoading(true);
+    console.debug("[search] query changed:", searchQuery);
+    const handle = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+      setSearchLoading(false);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
+  const searchResults = useMemo(() => {
+    const q = debouncedQuery.toLowerCase();
+    if (!q) return [];
+    const results = allBooks.filter((b) => {
+      return (
+        b.name_en.toLowerCase().includes(q) ||
+        b.name_ur.toLowerCase().includes(q)
+      );
+    });
+    console.debug("[search] results for", q, ":", results.length);
+    return results.slice(0, 6);
+  }, [debouncedQuery, allBooks]);
+
+  const showDropdown =
+    isSearchOpen && debouncedQuery.length > 0 && searchResults.length > 0;
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-search-container]")) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isSearchOpen]);
+
   const toggleMobileMenu = useCallback(() => {
     setIsMobileOpen((prev) => !prev);
   }, []);
@@ -46,7 +127,25 @@ export default function Header() {
     setIsMobileOpen(false);
   }, []);
 
-  const isActivePath = (path: string) => pathname === path || pathname.startsWith(path + "/");
+  const handleSearchFocus = useCallback(() => {
+    setIsSearchOpen(true);
+  }, []);
+
+  const handleSearchSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+    },
+    []
+  );
+
+  const handleResultClick = useCallback(() => {
+    setIsSearchOpen(false);
+    setSearchQuery("");
+    setDebouncedQuery("");
+  }, []);
+
+  const isActivePath = (path: string) =>
+    pathname === path || pathname.startsWith(path + "/");
 
   const navItems = [
     { href: "/contact", label: t("phone") === "Phone" ? "Contact" : "رابطہ کریں" },
@@ -61,6 +160,99 @@ export default function Header() {
         ...(staff.packer ? [{ href: "/packer", label: t("packerPanel") }] : []),
       ]
     : [];
+
+  const renderSearchDropdown = (inputId: string) => {
+    if (!showDropdown) return null;
+    return (
+      <div
+        id={`${inputId}-dropdown`}
+        className={`absolute z-50 mt-2 ${
+          isRtl ? "right-0" : "left-0"
+        } w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-80 overflow-y-auto`}
+        role="listbox"
+        aria-label="Search results"
+      >
+        {searchLoading ? (
+          <div className="p-3 text-xs text-muted-foreground">Searching…</div>
+        ) : (
+          searchResults.map((book) => {
+            const name =
+              language === "ur"
+                ? book.name_ur || book.name_en
+                : book.name_en || book.name_ur;
+            return (
+              <Link
+                key={book.id}
+                href={`/product/${book.id}`}
+                onClick={handleResultClick}
+                className="flex items-center gap-3 p-2 hover:bg-gray-50 border-b last:border-0 transition-colors"
+                role="option"
+                aria-selected="false"
+              >
+                <div className="relative w-10 h-12 shrink-0 bg-muted/30 border rounded overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={book.image}
+                    alt={name}
+                    className="absolute inset-0 w-full h-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.visibility =
+                        "hidden";
+                    }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-xs font-semibold text-gray-800 truncate"
+                    style={{ direction: isRtl ? "rtl" : "ltr" }}
+                  >
+                    {name}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    ₹{book.price.toFixed(0)}
+                    {book.stock <= 0
+                      ? ` · ${t("outOfStock")}`
+                      : ` · ${book.stock} in stock`}
+                  </p>
+                </div>
+              </Link>
+            );
+          })
+        )}
+      </div>
+    );
+  };
+
+  const renderSearchInput = (
+    id: string,
+    extraClass: string,
+    autoFocus?: boolean
+  ) => (
+    <div className="relative w-full" data-search-container>
+      <form className="relative w-full" onSubmit={handleSearchSubmit}>
+        <input
+          id={id}
+          type="search"
+          placeholder={isRtl ? "تلاش کریں..." : "Search products..."}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={handleSearchFocus}
+          className={`w-full ${
+            isRtl ? "pr-10 pl-4 text-right" : "pl-10 pr-4 text-left"
+          } py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-950 focus:border-transparent transition-all ${extraClass}`}
+          aria-label="Search products"
+          autoComplete="off"
+          autoFocus={autoFocus}
+        />
+        <Search
+          className={`absolute ${
+            isRtl ? "right-3" : "left-3"
+          } top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400`}
+        />
+      </form>
+      {renderSearchDropdown(id)}
+    </div>
+  );
 
   return (
     <header
@@ -120,17 +312,7 @@ export default function Header() {
           </div>
 
           <div className="hidden lg:flex flex-1 max-w-xs mx-4">
-            <form className="relative w-full">
-              <input
-                type="search"
-                placeholder={isRtl ? "تلاش کریں..." : "Search products..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full ${isRtl ? "pr-10 pl-4 text-right" : "pl-10 pr-4 text-left"} py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-950 focus:border-transparent transition-all`}
-                aria-label="Search products"
-              />
-              <Search className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400`} />
-            </form>
+            {renderSearchInput("header-search-desktop", "")}
           </div>
 
           <div className={`flex items-center ${isRtl ? "space-x-reverse space-x-2 sm:space-x-4" : "space-x-2 sm:space-x-4"}`}>
@@ -184,18 +366,7 @@ export default function Header() {
 
         {isSearchOpen && (
           <div className="lg:hidden mt-4 animate-in slide-in-from-top duration-200">
-            <form className="relative">
-              <input
-                type="search"
-                placeholder={isRtl ? "تلاش کریں..." : "Search products..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full ${isRtl ? "pr-10 pl-4 text-right" : "pl-10 pr-4 text-left"} py-3 text-sm border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent`}
-                aria-label="Search products"
-                autoFocus
-              />
-              <Search className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400`} />
-            </form>
+            {renderSearchInput("header-search-mobile", "rounded-sm", true)}
           </div>
         )}
 

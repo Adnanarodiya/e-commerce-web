@@ -20,6 +20,7 @@ interface Product {
   stock?: number;
   weight?: number;
   category?: string;
+  is_quran?: boolean;
 }
 
 export default function ProductCard({ product }: { product: Product }) {
@@ -47,6 +48,7 @@ export default function ProductCard({ product }: { product: Product }) {
       image: product.image,
       quantity: 1,
       weight: product.weight ?? 80,
+      is_quran: product.is_quran ?? false,
     });
 
     setIsAdding(false);

@@ -14,6 +14,7 @@ interface Product {
   stock?: number;
   weight?: number;
   category?: string;
+  is_quran?: boolean;
 }
 
 export default function ProductList() {
@@ -33,7 +34,8 @@ export default function ProductList() {
           price: Number(b.price),
           stock: b.stock,
           weight: b.weight,
-          image: b.image
+          image: b.image,
+          is_quran: b.is_quran ?? false
         }));
         setProducts(mapped);
       } catch (err) {

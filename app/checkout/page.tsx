@@ -20,6 +20,8 @@ export default function Checkout() {
     clearCart,
     subtotal,
     discount,
+    quranDiscount,
+    percentageDiscount,
     packagingCharge,
     total,
     deliveryType,
@@ -569,10 +571,16 @@ export default function Checkout() {
                   <span>{t("subtotal")}</span>
                   <span className="font-medium text-foreground">₹{subtotal.toFixed(2)}</span>
                 </div>
-                {discount > 0 && (
+                {quranDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-emerald-600 font-semibold">
+                    <span>Quran discount (₹25/copy)</span>
+                    <span>-₹{quranDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                {percentageDiscount > 0 && (
                   <div className="flex justify-between text-sm text-green-600 font-semibold">
-                    <span>{paymentType === "bank" ? "10%" : "15%"} {t("discount")}</span>
-                    <span>-₹{discount.toFixed(2)}</span>
+                    <span>{paymentType === "bank" ? "10%" : "15%"} {t("discount")} (books)</span>
+                    <span>-₹{percentageDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">

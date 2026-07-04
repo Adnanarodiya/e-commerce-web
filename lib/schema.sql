@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS books (
   image TEXT NOT NULL,
   stock INTEGER NOT NULL DEFAULT 0,
   weight INTEGER NOT NULL DEFAULT 80, -- Weight in grams (default 80g per book)
+  is_quran BOOLEAN NOT NULL DEFAULT FALSE, -- TRUE only for Quran Sharif (flat ₹25/copy discount, no % discount)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 

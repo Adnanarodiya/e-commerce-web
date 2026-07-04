@@ -11,6 +11,7 @@ export interface CatalogBook {
   image: string;
   stock: number;
   weight: number;
+  is_quran?: boolean;
 }
 
 export const PLACEHOLDER_IMAGE = "";
@@ -30,7 +31,8 @@ export const CATALOG_BOOKS: CatalogBook[] = [
     description_ur: descUr("Quran Sharif"),
     image: PLACEHOLDER_IMAGE,
     stock: 50,
-    weight: 80
+    weight: 80,
+    is_quran: true
   },
   {
     id: 2,

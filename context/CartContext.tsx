@@ -12,6 +12,7 @@ interface CartItem {
   image: string;
   quantity: number;
   weight: number;
+  is_quran?: boolean;
 }
 
 interface CartContextProps {
@@ -28,6 +29,8 @@ interface CartContextProps {
   setPaymentType: (type: PaymentType) => void;
   subtotal: number;
   discount: number;
+  quranDiscount: number;
+  percentageDiscount: number;
   packagingCharge: number;
   total: number;
   totalWeightGrams: number;
@@ -46,7 +49,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     if (savedCart) {
       // Normalize legacy items that have no weight (default 80g)
       const parsed: CartItem[] = JSON.parse(savedCart);
-      setCart(parsed.map((i) => ({ ...i, weight: i.weight ?? 80 })));
+      setCart(parsed.map((i) => ({ ...i, weight: i.weight ?? 80, is_quran: i.is_quran ?? false })));
     }
   }, []);
 
@@ -88,8 +91,22 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     );
   };
 
-  // 1. Calculate subtotal
+  // 1. Calculate subtotal (all items, including Quran)
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  // 1a. Split subtotal into Quran / non-Quran portions
+  //     Quran items get a flat ₹25 off per copy and never qualify for % discount.
+  //     Non-Quran items qualify for 10% (bank) / 15% (cash) when the *full* subtotal ≥ ₹5000.
+  const QURAN_FLAT_DISCOUNT_PER_COPY = 25;
+  const quranSubtotal = cart.reduce(
+    (sum, item) => (item.is_quran ? sum + item.price * item.quantity : sum),
+    0
+  );
+  const nonQuranSubtotal = subtotal - quranSubtotal;
+  const quranQty = cart.reduce(
+    (sum, item) => (item.is_quran ? sum + item.quantity : sum),
+    0
+  );
 
   // 2. Calculate total weight (grams) from book weights x quantities
   const totalWeightGrams = cart.reduce(
@@ -106,17 +123,23 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     packagingCharge = chargeableKg * 10;
   }
 
-  // 4. Calculate tiered payment discounts (if subtotal is 5K or more)
-  let discount = 0;
-  if (subtotal >= 5000) {
+  // 4. Quran flat discount: ₹25 per copy, always applies
+  const quranDiscount = Math.min(quranSubtotal, quranQty * QURAN_FLAT_DISCOUNT_PER_COPY);
+
+  // 5. Tiered percentage discount: applies only to non-Quran subtotal,
+  //    and only when the full cart subtotal (incl. Quran) is ≥ ₹5000.
+  let percentageDiscount = 0;
+  if (subtotal >= 5000 && nonQuranSubtotal > 0) {
     if (paymentType === "bank") {
-      discount = subtotal * 0.10; // 10%
+      percentageDiscount = nonQuranSubtotal * 0.10; // 10%
     } else if (paymentType === "cash") {
-      discount = subtotal * 0.15; // 15%
+      percentageDiscount = nonQuranSubtotal * 0.15; // 15%
     }
   }
 
-  // 5. Calculate final total
+  const discount = quranDiscount + percentageDiscount;
+
+  // 6. Calculate final total
   const total = Math.max(0, subtotal - discount + packagingCharge);
 
   return (
@@ -133,6 +156,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         setPaymentType,
         subtotal,
         discount,
+        quranDiscount,
+        percentageDiscount,
         packagingCharge,
         total,
         totalWeightGrams,

@@ -23,6 +23,7 @@ interface Book {
   image: string;
   stock: number;
   weight: number;
+  is_quran?: boolean;
 }
 
 interface Order {
@@ -67,9 +68,9 @@ const getMockDB = () => {
     return { books: DEFAULT_BOOKS, orders: [], orderItems: [], settings: [] };
   }
 
-  let books = localStorage.getItem("mock_books_v3");
+  let books = localStorage.getItem("mock_books_v4");
   if (!books) {
-    localStorage.setItem("mock_books_v3", JSON.stringify(DEFAULT_BOOKS));
+    localStorage.setItem("mock_books_v4", JSON.stringify(DEFAULT_BOOKS));
     books = JSON.stringify(DEFAULT_BOOKS);
   }
 
@@ -106,7 +107,7 @@ const getMockDB = () => {
 
 const saveMockDB = (db: { books: Book[]; orders: Order[]; orderItems: OrderItem[]; settings: Setting[] }) => {
   if (typeof window !== "undefined") {
-    localStorage.setItem("mock_books_v3", JSON.stringify(db.books));
+    localStorage.setItem("mock_books_v4", JSON.stringify(db.books));
     localStorage.setItem("mock_orders", JSON.stringify(db.orders));
     localStorage.setItem("mock_order_items", JSON.stringify(db.orderItems));
     localStorage.setItem("mock_settings", JSON.stringify(db.settings));
@@ -320,3 +321,4 @@ export const db = {
     return true;
   }
 };
+

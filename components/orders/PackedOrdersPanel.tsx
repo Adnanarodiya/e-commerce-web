@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/context/LanguageContext";
-import { Check, PackageCheck, Printer } from "lucide-react";
+import { Check, PackageCheck, Printer, Download } from "lucide-react";
 
 export interface PackedOrderItem {
   book_name: string;
@@ -29,6 +29,7 @@ interface PackedOrdersPanelProps {
   orders: PackedOrder[];
   onConfirmPickup: (orderId: string) => void;
   onPrintSlip?: (order: PackedOrder) => void;
+  onDownloadBill?: (order: PackedOrder) => void;
   confirmingId?: string | null;
   emptyMessage?: string;
 }
@@ -42,6 +43,7 @@ export default function PackedOrdersPanel({
   orders,
   onConfirmPickup,
   onPrintSlip,
+  onDownloadBill,
   confirmingId,
   emptyMessage,
 }: PackedOrdersPanelProps) {
@@ -125,6 +127,17 @@ export default function PackedOrdersPanel({
                 >
                   <Printer className="h-3.5 w-3.5 mr-1" />
                   {t("printSlip")}
+                </Button>
+              )}
+              {onDownloadBill && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => onDownloadBill(order)}
+                >
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  Download Bill
                 </Button>
               )}
               {!order.pickup_confirmed && (

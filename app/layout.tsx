@@ -1,5 +1,4 @@
-import Footer from "@/components/layout/Footer";
-import Header from "@/components/layout/Header";
+import AppChrome from "@/components/layout/AppChrome";
 import { CartProvider } from "@/context/CartContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import type { Metadata } from "next";
@@ -36,9 +35,7 @@ export default function RootLayout({
       >
         <LanguageProvider>
           <CartProvider>
-            <Header />
-            <main className="flex-grow">{children}</main>
-            <Footer />
+            <AppChrome>{children}</AppChrome>
           </CartProvider>
         </LanguageProvider>
       </body>

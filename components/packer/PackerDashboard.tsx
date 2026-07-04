@@ -26,6 +26,7 @@ function toSlipData(order: Order): ShippingSlipData {
     customer_address: order.customer_address,
     delivery_type: order.delivery_type,
     items: order.items,
+    created_at: order.created_at,
   };
 }
 
