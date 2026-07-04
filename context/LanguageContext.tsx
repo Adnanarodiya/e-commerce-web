@@ -111,7 +111,15 @@ export const translations = {
     books: "books",
     allBooksLoaded: "You've seen all our books",
     noProducts: "No products found",
-    noProductsHint: "Check back soon — new titles are added regularly"
+    noProductsHint: "Check back soon — new titles are added regularly",
+    heroTagline: "Noorani Makatib",
+    heroHeadline: "Buy Every Type of Kitab From Here",
+    heroSubtitle:
+      "Islamic, Urdu, children's & beginner books — one trusted shop for your entire library.",
+    kitabQuran: "Quran",
+    kitabHadith: "Hadith",
+    kitabUrdu: "Urdu",
+    kitabKids: "Children"
   },
   ur: {
     title: "اپنے علم میں اضافہ کریں",
@@ -219,7 +227,15 @@ export const translations = {
     books: "کتابیں",
     allBooksLoaded: "آپ نے تمام کتابیں دیکھ لی ہیں",
     noProducts: "کوئی مصنوعات نہیں ملیں",
-    noProductsHint: "جلد دوبارہ چیک کریں — نئی کتابیں شامل کی جاتی ہیں"
+    noProductsHint: "جلد دوبارہ چیک کریں — نئی کتابیں شامل کی جاتی ہیں",
+    heroTagline: "نورانی مکاتب",
+    heroHeadline: "یہاں سے ہر قسم کی کتاب خریدیں",
+    heroSubtitle:
+      "اسلامی، اردو، بچوں اور مبتدیوں کی کتابیں — اپنی پوری لائبریری کے لیے ایک قابل اعتماد دکان۔",
+    kitabQuran: "قرآن",
+    kitabHadith: "حدیث",
+    kitabUrdu: "اردو",
+    kitabKids: "بچوں کی"
   }
 };
 
