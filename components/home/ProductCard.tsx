@@ -57,7 +57,7 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <Card className="group overflow-hidden bg-card border-border hover:shadow-md sm:hover:shadow-lg transition-all duration-200 h-full flex flex-col">
+    <Card className="group overflow-hidden bg-card border-border hover:shadow-md sm:hover:shadow-lg hover:border-primary/20 transition-all duration-200 h-full flex flex-col rounded-lg">
       <div className="relative overflow-hidden">
         {isOutOfStock && (
           <div className="absolute top-1.5 left-1.5 z-20 bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded text-[9px] sm:text-xs font-bold">
@@ -116,7 +116,7 @@ export default function ProductCard({ product }: { product: Product }) {
             isOutOfStock
               ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted"
               : justAdded
-              ? "bg-green-600 text-white hover:bg-green-600"
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
               : "bg-primary text-primary-foreground hover:bg-primary/90"
           )}
           onClick={handleAddToCart}

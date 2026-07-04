@@ -55,8 +55,8 @@ export default function PackerLogin() {
     <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="text-center">
-          <div className="w-12 h-12 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Package className="h-6 w-6 text-orange-600" />
+          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Package className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-xl">
             {isRtl ? "پیکر رسائی" : "Packer Access"}
@@ -86,7 +86,7 @@ export default function PackerLogin() {
             )}
             <Button
               type="submit"
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+              className="w-full"
               disabled={loading || !passcode}
             >
               {loading

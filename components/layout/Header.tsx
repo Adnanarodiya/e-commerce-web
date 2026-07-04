@@ -169,7 +169,7 @@ export default function Header() {
         id={`${inputId}-dropdown`}
         className={`absolute z-50 mt-2 ${
           isRtl ? "right-0" : "left-0"
-        } w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-80 overflow-y-auto`}
+        } w-full bg-popover border border-border rounded-lg shadow-lg max-h-80 overflow-y-auto`}
         role="listbox"
         aria-label="Search results"
       >
@@ -186,7 +186,7 @@ export default function Header() {
                 key={book.id}
                 href={`/product/${book.id}`}
                 onClick={handleResultClick}
-                className="flex items-center gap-3 p-2 hover:bg-gray-50 border-b last:border-0 transition-colors"
+                className="flex items-center gap-3 p-2 hover:bg-accent/50 border-b last:border-0 transition-colors"
                 role="option"
                 aria-selected="false"
               >
@@ -204,7 +204,7 @@ export default function Header() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p
-                    className="text-xs font-semibold text-gray-800 truncate"
+                    className="text-xs font-semibold text-foreground truncate"
                     style={{ direction: isRtl ? "rtl" : "ltr" }}
                   >
                     {name}
@@ -240,7 +240,7 @@ export default function Header() {
           onFocus={handleSearchFocus}
           className={`w-full ${
             isRtl ? "pr-10 pl-4 text-right" : "pl-10 pr-4 text-left"
-          } py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-950 focus:border-transparent transition-all ${extraClass}`}
+          } py-2 text-sm border border-input bg-background rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all ${extraClass}`}
           aria-label="Search products"
           autoComplete="off"
           autoFocus={autoFocus}
@@ -248,7 +248,7 @@ export default function Header() {
         <Search
           className={`absolute ${
             isRtl ? "right-3" : "left-3"
-          } top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400`}
+          } top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground`}
         />
       </form>
       {renderSearchDropdown(id)}
@@ -259,8 +259,8 @@ export default function Header() {
     <header
       className={`sticky top-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? "bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg"
-          : "bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm"
+          ? "bg-background/95 backdrop-blur-xl border-b border-border shadow-md"
+          : "bg-background/80 backdrop-blur-md border-b border-border shadow-sm"
       }`}
     >
       <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4">
@@ -277,10 +277,10 @@ export default function Header() {
                 <Link
                   key={href}
                   href={href}
-                  className={`relative py-2 px-4 rounded-sm text-sm font-medium transition-all duration-200 ${
+                  className={`relative py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
                     isActivePath(href)
-                      ? "bg-orange-100 shadow-md text-primary"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      ? "bg-secondary shadow-sm text-secondary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                   aria-current={isActivePath(href) ? "page" : undefined}
                 >
@@ -292,11 +292,9 @@ export default function Header() {
                 <Link
                   key={href}
                   href={href}
-                  className={`relative py-2 px-4 rounded-sm text-sm font-semibold transition-all duration-200 ${
+                  className={`relative py-2 px-4 rounded-md text-sm font-semibold transition-all duration-200 ${
                     isActivePath(href)
                       ? "bg-primary text-primary-foreground shadow-md"
-                      : href === "/packer"
-                      ? "text-orange-600 hover:bg-orange-50"
                       : "text-primary hover:bg-primary/10"
                   }`}
                 >
@@ -313,7 +311,7 @@ export default function Header() {
           <div className={`flex items-center ${isRtl ? "space-x-reverse space-x-2 sm:space-x-4" : "space-x-2 sm:space-x-4"}`}>
             <button
               onClick={() => setLanguage(language === "en" ? "ur" : "en")}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
               title="Switch Language"
             >
               <Globe className="h-3.5 w-3.5" />
@@ -322,34 +320,34 @@ export default function Header() {
 
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="lg:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="lg:hidden p-2 rounded-full hover:bg-accent transition-colors"
               aria-label="Search"
             >
-              <Search className="h-5 w-5 text-gray-700" />
+              <Search className="h-5 w-5 text-muted-foreground" />
             </button>
 
             <button
               onClick={toggleMobileMenu}
-              className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="md:hidden p-2 rounded-full hover:bg-accent transition-colors"
               aria-label="Toggle navigation menu"
               aria-expanded={isMobileOpen}
             >
               {isMobileOpen ? (
-                <X className="h-6 w-6 text-gray-700" />
+                <X className="h-6 w-6 text-muted-foreground" />
               ) : (
-                <Menu className="h-6 w-6 text-gray-700" />
+                <Menu className="h-6 w-6 text-muted-foreground" />
               )}
             </button>
 
             <Link
               href="/cart"
-              className="relative p-2 rounded-full hover:bg-gray-100 transition-all duration-200 group"
+              className="relative p-2 rounded-full hover:bg-accent transition-all duration-200 group"
               aria-label={`Shopping cart with ${cartCount} items`}
             >
-              <ShoppingCart className="h-6 w-6 text-gray-700 group-hover:text-gray-900 transition-colors" />
+              <ShoppingCart className="h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors" />
               {cartCount > 0 && (
                 <span
-                  className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1"
+                  className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1"
                   aria-label={`${cartCount} items in cart`}
                 >
                   {cartCount > 99 ? "99+" : cartCount}
@@ -371,16 +369,16 @@ export default function Header() {
             role="navigation"
             aria-label="Mobile navigation"
           >
-            <div className="flex flex-col space-y-3 pb-4 border-b border-gray-200">
+            <div className="flex flex-col space-y-3 pb-4 border-b border-border">
               {navItems.map(({ href, label }) => (
                 <Link
                   key={href}
                   href={href}
                   onClick={closeMobileMenu}
-                  className={`text-sm font-medium py-2 px-3 rounded-sm transition-all ${
+                  className={`text-sm font-medium py-2 px-3 rounded-md transition-all ${
                     isActivePath(href)
-                      ? "bg-orange-100 text-primary"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                      ? "bg-secondary text-secondary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
                   }`}
                   aria-current={isActivePath(href) ? "page" : undefined}
                 >
@@ -393,14 +391,10 @@ export default function Header() {
                   key={href}
                   href={href}
                   onClick={closeMobileMenu}
-                  className={`text-sm font-bold py-2 px-3 rounded-sm transition-all ${
+                  className={`text-sm font-bold py-2 px-3 rounded-md transition-all ${
                     isActivePath(href)
-                      ? href === "/packer"
-                        ? "bg-orange-500 text-white"
-                        : "bg-primary text-primary-foreground"
-                      : href === "/packer"
-                      ? "text-orange-600 hover:bg-orange-50"
-                      : "text-primary hover:bg-gray-50"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-primary hover:bg-accent"
                   }`}
                 >
                   {label}

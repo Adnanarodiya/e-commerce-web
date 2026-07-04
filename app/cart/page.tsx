@@ -22,13 +22,13 @@ export default function Cart() {
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Bilingual Discount Banner */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-orange-200 rounded-xl flex items-start gap-3 shadow-sm animate-pulse">
+      <div className="mb-6 p-4 bg-gradient-to-r from-primary/10 via-secondary to-primary/10 border border-primary/20 rounded-xl flex items-start gap-3 shadow-sm">
         <Gift className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
         <div className="space-y-1 text-sm text-foreground">
-          <p className="font-semibold text-orange-800">
+          <p className="font-semibold text-primary">
             {t("discountBanner")}
           </p>
-          <p className="font-medium text-orange-700/80 leading-relaxed text-right font-sans" style={{ direction: "rtl" }}>
+          <p className="font-medium text-muted-foreground leading-relaxed text-right font-sans" style={{ direction: "rtl" }}>
             🎉 خصوصی پیشکش: اگر آپ ₹5,000 یا اس سے زیادہ کی خریداری کرتے ہیں، تو بینک ادائیگی پر %10 اور کیش پر %15 کی رعایت حاصل کریں!
           </p>
         </div>

@@ -14,7 +14,7 @@ export default function ProductNotFound() {
           The product you&apos;re looking for doesn&apos;t exist.
         </p>
         <Button asChild>
-          <Link href="/shop">
+          <Link href="/">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Return to Shop
           </Link>

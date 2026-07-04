@@ -103,7 +103,15 @@ export const translations = {
     slipDesc: "Attach this slip to the packed box for delivery reference.",
     printedOn: "Printed on",
     deliveryBoyReference: "Delivery Reference",
-    phone: "Phone"
+    phone: "Phone",
+    loadMore: "Load More Books",
+    loadingMore: "Loading...",
+    showing: "Showing",
+    of: "of",
+    books: "books",
+    allBooksLoaded: "You've seen all our books",
+    noProducts: "No products found",
+    noProductsHint: "Check back soon — new titles are added regularly"
   },
   ur: {
     title: "اپنے علم میں اضافہ کریں",
@@ -203,7 +211,15 @@ export const translations = {
     slipDesc: "ڈیلیوری کے حوالے کے لیے اس پرچی کو پیک شدہ ڈبے کے ساتھ چسپاں کریں۔",
     printedOn: "پرنٹ کی تاریخ",
     deliveryBoyReference: "ڈیلیوری کا حوالہ",
-    phone: "فون"
+    phone: "فون",
+    loadMore: "مزید کتابیں دیکھیں",
+    loadingMore: "لوڈ ہو رہا ہے...",
+    showing: "دکھایا جا رہا ہے",
+    of: "میں سے",
+    books: "کتابیں",
+    allBooksLoaded: "آپ نے تمام کتابیں دیکھ لی ہیں",
+    noProducts: "کوئی مصنوعات نہیں ملیں",
+    noProductsHint: "جلد دوبارہ چیک کریں — نئی کتابیں شامل کی جاتی ہیں"
   }
 };
 

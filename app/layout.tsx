@@ -10,11 +10,28 @@ import {
 } from "@/lib/pwa-config";
 import { BRAND_LOGO, BRAND_LOGO_ALT } from "@/lib/brand";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import {
+  Merriweather,
+  Montserrat,
+  Source_Code_Pro,
+} from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const montserrat = Montserrat({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const merriweather = Merriweather({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+});
+
+const sourceCodePro = Source_Code_Pro({
+  variable: "--font-mono",
   subsets: ["latin"],
   display: "swap",
 });
@@ -67,7 +84,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.className}  antialiased flex flex-col min-h-screen`}
+        className={`${montserrat.variable} ${merriweather.variable} ${sourceCodePro.variable} font-sans antialiased flex flex-col min-h-screen`}
       >
         <SerwistProvider swUrl="/serwist/sw.js">
           <LanguageProvider>
