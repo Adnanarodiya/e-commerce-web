@@ -82,7 +82,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<"day" | "month" | "year">("month");
   const [reorderAmount, setReorderAmount] = useState<Record<number, number>>({});
-  const [setStockDraft, setSetStockDraft] = useState<Record<number, string>>({});
   const [activeTab, setActiveTab] = useState("dashboard");
   const [statementRange, setStatementRange] = useState<"today" | "week" | "month" | "year" | "all">("today");
   const [statementMode, setStatementMode] = useState<"bank" | "cash">("bank");
@@ -256,23 +255,6 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err);
       setToast({ message: "Failed to update stock", visible: true });
-    }
-  };
-
-  const handleSetStock = async (id: number) => {
-    const raw = setStockDraft[id];
-    const newStock = parseInt(raw, 10);
-    if (Number.isNaN(newStock) || newStock < 0) return;
-    try {
-      const book = books.find(b => b.id === id);
-      if (!book) return;
-      await db.updateBook(id, { stock: newStock });
-      setBooks(prev => prev.map(b => b.id === id ? { ...b, stock: newStock } : b));
-      setSetStockDraft(prev => ({ ...prev, [id]: "" }));
-      setToast({ message: `"${book.name_en}" stock set to ${newStock}`, visible: true });
-    } catch (err) {
-      console.error(err);
-      setToast({ message: "Failed to set stock", visible: true });
     }
   };
 
@@ -467,10 +449,10 @@ export default function AdminDashboard() {
     badge?: number;
   }[] = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "stock", label: "Stock", icon: Package, badge: criticalStockCount || undefined },
     { id: "orders", label: "Orders", icon: Truck, badge: pendingOrders.length || undefined },
     { id: "statement", label: "Statement", icon: ReceiptText },
     { id: "books", label: "Inventory", icon: BookOpen },
+    { id: "stock", label: "Stock", icon: Package, badge: criticalStockCount || undefined },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -676,26 +658,20 @@ export default function AdminDashboard() {
         {/* Stock manager — out of stock & low stock (< 5) */}
         {activeTab === "stock" && (
           <div className="space-y-4">
-            <div className="bg-white p-4 border border-border rounded-xl shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900">Stock Manager</h2>
+            <div className="bg-white px-5 py-4 border border-slate-200 rounded-xl shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900">Stock Manager</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Restock out-of-stock titles and low inventory (fewer than {LOW_STOCK_THRESHOLD} copies).
-                Add quantity or set an exact stock level, then edit full book details if needed.
+                Out-of-stock and low-inventory titles (fewer than {LOW_STOCK_THRESHOLD} copies).
               </p>
             </div>
             <StockManagementPanel
               books={books}
               lowStockThreshold={LOW_STOCK_THRESHOLD}
               reorderAmount={reorderAmount}
-              setStockDraft={setStockDraft}
               onReorderChange={(id, qty) =>
                 setReorderAmount((prev) => ({ ...prev, [id]: qty }))
               }
-              onSetStockDraftChange={(id, value) =>
-                setSetStockDraft((prev) => ({ ...prev, [id]: value }))
-              }
               onAddStock={handleUpdateStock}
-              onSetStock={handleSetStock}
               onEditBook={(b) => {
                 const full = books.find((x) => x.id === b.id);
                 if (full) handleOpenEditBook(full);
