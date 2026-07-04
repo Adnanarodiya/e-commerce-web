@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Package } from "lucide-react";
 import Link from "next/link";
+import StaffInstallHint from "@/components/layout/StaffInstallHint";
 
 export default function PackerLogin() {
   const { isRtl, setUserRole } = useLanguage();
@@ -52,7 +53,7 @@ export default function PackerLogin() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+    <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-[60vh]">
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="text-center">
           <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -106,6 +107,9 @@ export default function PackerLogin() {
           </form>
         </CardContent>
       </Card>
+      <div className="w-full max-w-sm">
+        <StaffInstallHint role="packer" />
+      </div>
     </div>
   );
 }

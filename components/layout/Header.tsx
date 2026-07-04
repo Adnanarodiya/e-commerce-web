@@ -148,10 +148,6 @@ export default function Header() {
   const isActivePath = (path: string) =>
     pathname === path || pathname.startsWith(path + "/");
 
-  const navItems = [
-    { href: "/contact", label: t("phone") === "Phone" ? "Contact" : "رابطہ کریں" },
-  ];
-
   const isStaffRoute =
     pathname.startsWith("/admin") || pathname.startsWith("/packer");
 
@@ -161,6 +157,8 @@ export default function Header() {
         ...(staff.packer ? [{ href: "/packer", label: t("packerPanel") }] : []),
       ]
     : [];
+
+  const showNav = staffLinks.length > 0;
 
   const renderSearchDropdown = (inputId: string) => {
     if (!showDropdown) return null;
@@ -268,26 +266,12 @@ export default function Header() {
           <div className={`flex items-center ${isRtl ? "space-x-reverse" : "space-x-8"} lg:${isRtl ? "space-x-reverse" : "space-x-12"}`}>
             <BrandLogo priority className="min-w-0 max-w-[140px] sm:max-w-[180px]" />
 
+            {showNav && (
             <nav
               className={`hidden md:flex items-center ${isRtl ? "space-x-reverse space-x-1" : "space-x-1"}`}
               role="navigation"
               aria-label="Main navigation"
             >
-              {navItems.map(({ href, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`relative py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
-                    isActivePath(href)
-                      ? "bg-secondary shadow-sm text-secondary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
-                  aria-current={isActivePath(href) ? "page" : undefined}
-                >
-                  {label}
-                </Link>
-              ))}
-
               {staffLinks.map(({ href, label }) => (
                 <Link
                   key={href}
@@ -302,6 +286,7 @@ export default function Header() {
                 </Link>
               ))}
             </nav>
+            )}
           </div>
 
           <div className="hidden lg:flex flex-1 max-w-xs mx-4">
@@ -326,6 +311,7 @@ export default function Header() {
               <Search className="h-5 w-5 text-muted-foreground" />
             </button>
 
+            {showNav && (
             <button
               onClick={toggleMobileMenu}
               className="md:hidden p-2 rounded-full hover:bg-accent transition-colors"
@@ -338,6 +324,7 @@ export default function Header() {
                 <Menu className="h-6 w-6 text-muted-foreground" />
               )}
             </button>
+            )}
 
             <Link
               href="/cart"
@@ -363,29 +350,13 @@ export default function Header() {
           </div>
         )}
 
-        {isMobileOpen && (
+        {showNav && isMobileOpen && (
           <nav
             className="md:hidden mt-4 animate-in slide-in-from-top duration-200"
             role="navigation"
             aria-label="Mobile navigation"
           >
             <div className="flex flex-col space-y-3 pb-4 border-b border-border">
-              {navItems.map(({ href, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={closeMobileMenu}
-                  className={`text-sm font-medium py-2 px-3 rounded-md transition-all ${
-                    isActivePath(href)
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  }`}
-                  aria-current={isActivePath(href) ? "page" : undefined}
-                >
-                  {label}
-                </Link>
-              ))}
-
               {staffLinks.map(({ href, label }) => (
                 <Link
                   key={href}
