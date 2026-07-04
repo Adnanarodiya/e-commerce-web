@@ -2,6 +2,7 @@
 
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
+import BrandLogo from "@/components/ui/BrandLogo";
 import { db } from "@/lib/supabase";
 import { hasStaffSession } from "@/lib/staff-session";
 import { Menu, Search, ShoppingCart, X, Globe } from "lucide-react";
@@ -265,13 +266,7 @@ export default function Header() {
       <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4">
         <div className="flex items-center justify-between">
           <div className={`flex items-center ${isRtl ? "space-x-reverse" : "space-x-8"} lg:${isRtl ? "space-x-reverse" : "space-x-12"}`}>
-            <Link
-              className="text-lg sm:text-2xl font-bold tracking-tight text-gray-900 hover:text-gray-700 transition-colors"
-              href="/"
-              aria-label="Noorani Makatib Home"
-            >
-              NOORANI<span className="text-primary"> MAKATIB</span>
-            </Link>
+            <BrandLogo priority className="min-w-0 max-w-[140px] sm:max-w-[180px]" />
 
             <nav
               className={`hidden md:flex items-center ${isRtl ? "space-x-reverse space-x-1" : "space-x-1"}`}

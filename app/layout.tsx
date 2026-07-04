@@ -1,7 +1,15 @@
 import AppChrome from "@/components/layout/AppChrome";
+import { SerwistProvider } from "@/components/providers/SerwistProvider";
 import { CartProvider } from "@/context/CartContext";
 import { LanguageProvider } from "@/context/LanguageContext";
-import type { Metadata } from "next";
+import {
+  PWA_DESCRIPTION,
+  PWA_NAME,
+  PWA_SHORT_NAME,
+  PWA_THEME_COLOR,
+} from "@/lib/pwa-config";
+import { BRAND_LOGO, BRAND_LOGO_ALT } from "@/lib/brand";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -12,15 +20,43 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Noorani Makatib",
-  description:
-    "Discover a wide selection of educational Islamic and Urdu books for children and beginners. Enjoy fast delivery and secure payments.",
+  applicationName: PWA_NAME,
+  title: {
+    default: PWA_NAME,
+    template: `%s | ${PWA_SHORT_NAME}`,
+  },
+  description: PWA_DESCRIPTION,
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: BRAND_LOGO,
+    apple: BRAND_LOGO,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: PWA_SHORT_NAME,
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: PWA_NAME,
+    title: PWA_NAME,
+    description: PWA_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary",
+    title: PWA_NAME,
+    description: PWA_DESCRIPTION,
+  },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  themeColor: PWA_THEME_COLOR,
 };
 
 export default function RootLayout({
@@ -33,11 +69,13 @@ export default function RootLayout({
       <body
         className={`${inter.className}  antialiased flex flex-col min-h-screen`}
       >
-        <LanguageProvider>
-          <CartProvider>
-            <AppChrome>{children}</AppChrome>
-          </CartProvider>
-        </LanguageProvider>
+        <SerwistProvider swUrl="/serwist/sw.js">
+          <LanguageProvider>
+            <CartProvider>
+              <AppChrome>{children}</AppChrome>
+            </CartProvider>
+          </LanguageProvider>
+        </SerwistProvider>
       </body>
     </html>
   );

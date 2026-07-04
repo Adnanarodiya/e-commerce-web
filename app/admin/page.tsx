@@ -521,63 +521,63 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Card className="shadow-sm rounded-xl border border-border">
-                <CardContent className="p-3 sm:p-6">
-                  <div className="flex justify-between items-start gap-2">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
-                      <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">Stock Valuation</p>
-                      <h3 className="text-lg sm:text-2xl font-bold mt-1 text-slate-800 truncate">₹{totalStockValue.toLocaleString()}</h3>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Stock Valuation</p>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-slate-800">₹{totalStockValue.toLocaleString()}</h3>
+                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
+                        Total {totalStockQuantity} books in inventory
+                      </p>
                     </div>
-                    <Layers className="h-8 w-8 text-primary/80 bg-primary/10 p-1.5 rounded-lg" />
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-3 font-semibold">
-                    Total {totalStockQuantity} books in inventory
+                    <Layers className="h-9 w-9 shrink-0 text-primary/80 bg-primary/10 p-1.5 rounded-lg" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="shadow-sm rounded-xl border border-border">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
                       <p className="text-xs font-bold text-muted-foreground uppercase">Bank Revenue</p>
-                      <h3 className="text-2xl font-bold mt-1 text-blue-600">₹{bankEarnings.toLocaleString()}</h3>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-blue-600">₹{bankEarnings.toLocaleString()}</h3>
+                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
+                        From bank/UPI transfer (confirmed)
+                      </p>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-blue-500 bg-blue-50 p-1.5 rounded-lg" />
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-3 font-semibold">
-                    From bank/UPI transfer (confirmed)
+                    <TrendingUp className="h-9 w-9 shrink-0 text-blue-500 bg-blue-50 p-1.5 rounded-lg" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="shadow-sm rounded-xl border border-border">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
                       <p className="text-xs font-bold text-muted-foreground uppercase">Cash Revenue</p>
-                      <h3 className="text-2xl font-bold mt-1 text-green-600">₹{cashEarnings.toLocaleString()}</h3>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-green-600">₹{cashEarnings.toLocaleString()}</h3>
+                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
+                        From cash payment orders (confirmed)
+                      </p>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-green-500 bg-green-50 p-1.5 rounded-lg" />
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-3 font-semibold">
-                    From cash payment orders (confirmed)
+                    <TrendingUp className="h-9 w-9 shrink-0 text-green-500 bg-green-50 p-1.5 rounded-lg" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="shadow-sm rounded-xl border border-border">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
                       <p className="text-xs font-bold text-muted-foreground uppercase">Total Revenue</p>
-                      <h3 className="text-2xl font-bold mt-1 text-purple-600">₹{totalEarnings.toLocaleString()}</h3>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-purple-600">₹{totalEarnings.toLocaleString()}</h3>
+                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
+                        Combined earnings in filtered period
+                      </p>
                     </div>
-                    <BarChart3 className="h-8 w-8 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-3 font-semibold">
-                    Combined earnings in filtered period
+                    <BarChart3 className="h-9 w-9 shrink-0 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
                   </div>
                 </CardContent>
               </Card>
