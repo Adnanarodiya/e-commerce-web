@@ -1,10 +1,9 @@
 "use client";
 
+import MobileSheet from "@/components/ui/MobileSheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { useLockBodyScroll } from "@/lib/use-lock-body-scroll";
 
 interface ConfirmModalProps {
   open: boolean;
@@ -52,22 +51,17 @@ export default function ConfirmModal({
     return () => setMounted(false);
   }, []);
 
-  useLockBodyScroll(open && mounted);
-
   if (!open || !mounted) return null;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overscroll-none touch-none"
-      onClick={loading ? undefined : onCancel}
-      role="presentation"
-    >
-      <div
-        className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+  return (
+    <MobileSheet
+      open={open}
+      onClose={loading ? () => {} : onCancel}
+      closeOnOverlay={!loading}
+      maxWidth="sm"
+      header={
         <div
-          className={`${headerToneClass[headerTone]} px-5 py-4 flex items-start justify-between gap-3 text-white`}
+          className={`${headerToneClass[headerTone]} px-4 pt-2 pb-4 sm:px-5 sm:pt-4 flex items-start justify-between gap-3 text-white shrink-0`}
         >
           <div className="flex items-center gap-3 min-w-0">
             {icon ? (
@@ -87,30 +81,31 @@ export default function ConfirmModal({
             <X className="h-5 w-5" />
           </button>
         </div>
-
-        <div className="p-5 space-y-4 text-left">
-          <p className="text-sm text-slate-600 leading-relaxed">{description}</p>
-          {children}
-          <div className="flex gap-3 pt-1">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={onCancel}
-              disabled={loading}
-            >
-              {cancelLabel}
-            </Button>
-            <Button
-              className={`flex-1 font-semibold ${confirmToneClass[headerTone]}`}
-              onClick={onConfirm}
-              disabled={loading}
-            >
-              {loading ? "Please wait…" : confirmLabel}
-            </Button>
-          </div>
+      }
+      footer={
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 h-11 sm:h-10"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            {cancelLabel}
+          </Button>
+          <Button
+            className={`flex-1 h-11 sm:h-10 font-semibold ${confirmToneClass[headerTone]}`}
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? "Please wait…" : confirmLabel}
+          </Button>
         </div>
+      }
+    >
+      <div className="px-4 py-4 sm:px-5 sm:py-5 space-y-4 text-left">
+        <p className="text-sm text-slate-600 leading-relaxed">{description}</p>
+        {children}
       </div>
-    </div>,
-    document.body
+    </MobileSheet>
   );
 }

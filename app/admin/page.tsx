@@ -20,11 +20,15 @@ import {
 import Image from "next/image";
 import { downloadInvoicePdf } from "@/lib/pdf-download";
 import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
-import { useLockBodyScroll } from "@/lib/use-lock-body-scroll";
+import MobileSheet from "@/components/ui/MobileSheet";
 import StockAlertCards from "@/components/admin/StockAlertCards";
 import StockManagementPanel from "@/components/admin/StockManagementPanel";
 
 const LOW_STOCK_THRESHOLD = 5;
+
+const adminFieldInput =
+  "h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-base text-slate-900 shadow-none placeholder:text-slate-400 focus-visible:bg-white focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 sm:h-10 sm:text-sm";
+const adminFieldLabel = "text-sm font-semibold text-slate-700";
 
 interface Book {
   id: number;
@@ -114,8 +118,6 @@ export default function AdminDashboard() {
     image: "",
     is_quran: false
   });
-
-  useLockBodyScroll(!!callModal || isBookModalOpen);
 
   // Fetch all data
   const loadData = async () => {
@@ -947,12 +949,12 @@ export default function AdminDashboard() {
         {/* Tab 4: Books Inventory (CRUD) */}
         {activeTab === "books" && (
           <Card>
-            <CardHeader className="flex flex-row justify-between items-center">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
               <div>
                 <CardTitle className="text-lg font-bold">Books Stock Manager</CardTitle>
                 <CardDescription>Perform CRUD operations, manage cover images, pricing, and translations.</CardDescription>
               </div>
-              <Button onClick={handleOpenAddBook} size="sm" className="bg-primary text-primary-foreground flex items-center gap-2">
+              <Button onClick={handleOpenAddBook} size="sm" className="bg-primary text-primary-foreground flex items-center justify-center gap-2 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 Add New Book
               </Button>
@@ -969,10 +971,10 @@ export default function AdminDashboard() {
                         <div className="min-w-0">
                           <h4 className="font-bold text-sm text-foreground truncate">{book.name_en}</h4>
                           <h5 className="text-xs text-muted-foreground truncate">{book.name_ur}</h5>
-                          <div className="flex gap-2 mt-1.5 items-center">
-                            <span className="font-bold text-xs">₹{book.price}</span>
-                            <Badge variant={book.stock === 0 ? "destructive" : book.stock < LOW_STOCK_THRESHOLD ? "secondary" : "outline"} className={`text-[10px] ${book.stock > 0 && book.stock < LOW_STOCK_THRESHOLD ? "bg-amber-100 text-amber-800 border-amber-300" : ""}`}>
-                              Stock: {book.stock}
+                          <div className="flex flex-wrap gap-1.5 mt-1.5 items-center">
+                            <span className="font-bold text-xs tabular-nums">₹{book.price.toLocaleString()}</span>
+                            <Badge variant={book.stock === 0 ? "destructive" : book.stock < LOW_STOCK_THRESHOLD ? "secondary" : "outline"} className={`text-[10px] tabular-nums ${book.stock > 0 && book.stock < LOW_STOCK_THRESHOLD ? "bg-amber-100 text-amber-800 border-amber-300" : ""}`}>
+                              Stock: {book.stock.toLocaleString()}
                             </Badge>
                             <Badge variant="outline" className="text-[10px] text-muted-foreground">
                               {book.weight ?? 80}g
@@ -1087,25 +1089,19 @@ export default function AdminDashboard() {
       </div>
 
       {/* Ready-to-pack confirmation modal */}
-      {callModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overscroll-none touch-none"
-          onClick={() => setCallModal(null)}
-          role="presentation"
-        >
-          <div
-            className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-primary px-5 py-4 flex items-start justify-between gap-3">
+      <MobileSheet
+        open={!!callModal}
+        onClose={() => setCallModal(null)}
+        maxWidth="sm"
+        header={
+          callModal ? (
+            <div className="bg-primary px-4 pt-2 pb-4 sm:px-5 sm:pt-4 flex items-start justify-between gap-3 text-white shrink-0">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
                   <PhoneCall className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-lg font-bold text-white leading-tight">
-                    {t("confirmPackTitle")}
-                  </h3>
+                  <h3 className="text-lg font-bold leading-tight">{t("confirmPackTitle")}</h3>
                   <p className="text-sm text-white/85 mt-0.5">
                     Verify with customer before sending to packer
                   </p>
@@ -1120,272 +1116,266 @@ export default function AdminDashboard() {
                 <X className="h-5 w-5 text-white" />
               </button>
             </div>
+          ) : null
+        }
+        footer={
+          callModal ? (
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 h-11 sm:h-10" onClick={() => setCallModal(null)}>
+                {t("cancel")}
+              </Button>
+              <Button
+                className="flex-1 h-11 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                onClick={confirmReadyToPack}
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Send to Packer
+              </Button>
+            </div>
+          ) : null
+        }
+      >
+        {callModal ? (
+          <div className="px-4 py-4 sm:px-5 sm:py-5 space-y-4 text-left">
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {t("confirmPackPrompt").replace("{phone}", callModal.customer_phone)}
+            </p>
 
-            <div className="p-5 space-y-4 text-left">
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {t("confirmPackPrompt").replace("{phone}", callModal.customer_phone)}
-              </p>
-
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Order ID
-                  </span>
-                  <span className="text-sm font-bold text-slate-900 font-mono">
-                    {callModal.id}
-                  </span>
-                </div>
-
-                <Separator className="bg-slate-200" />
-
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Customer
-                  </span>
-                  <span className="text-sm font-bold text-slate-900 text-right">
-                    {callModal.customer_name}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Phone
-                  </span>
-                  <a
-                    href={`tel:${callModal.customer_phone.replace(/\s/g, "")}`}
-                    className="text-sm font-bold text-primary hover:underline text-right"
-                  >
-                    {callModal.customer_phone}
-                  </a>
-                </div>
-
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Payment
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900">
-                    {callModal.payment_type === "bank" ? (
-                      <>
-                        <Banknote className="h-4 w-4 text-blue-600" />
-                        Bank / UPI
-                      </>
-                    ) : (
-                      <>
-                        <Wallet className="h-4 w-4 text-emerald-600" />
-                        Cash on Delivery
-                      </>
-                    )}
-                    <span className="text-primary">· ₹{callModal.total.toFixed(2)}</span>
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Delivery
-                  </span>
-                  <span className="text-sm font-bold text-slate-900 capitalize text-right">
-                    {formatDeliveryType(callModal.delivery_type)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-start gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">
-                    Items
-                  </span>
-                  <div className="text-sm text-slate-800 text-right space-y-1">
-                    <p className="font-bold">
-                      {formatOrderItemsSummary(callModal.items)}
-                    </p>
-                    <ul className="text-xs text-slate-600 space-y-0.5">
-                      {callModal.items.slice(0, 4).map((item) => (
-                        <li key={item.id}>
-                          {item.book_name} — {item.quantity}{" "}
-                          {item.quantity === 1 ? "book" : "books"}
-                        </li>
-                      ))}
-                      {callModal.items.length > 4 && (
-                        <li className="text-slate-400">
-                          +{callModal.items.length - 4} more…
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Order ID</span>
+                <span className="text-sm font-bold text-slate-900 font-mono">{callModal.id}</span>
               </div>
-
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Confirm order details, book quantities, courier type, and payment
-                status with the customer. Once verified, assign to the packer.
-              </p>
-
-              <div className="flex gap-3 pt-1">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setCallModal(null)}
+              <Separator className="bg-slate-200" />
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer</span>
+                <span className="text-sm font-bold text-slate-900 text-right">{callModal.customer_name}</span>
+              </div>
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</span>
+                <a
+                  href={`tel:${callModal.customer_phone.replace(/\s/g, "")}`}
+                  className="text-sm font-bold text-primary hover:underline text-right"
                 >
-                  {t("cancel")}
-                </Button>
-                <Button
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                  onClick={confirmReadyToPack}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Send to Packer
-                </Button>
+                  {callModal.customer_phone}
+                </a>
+              </div>
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payment</span>
+                <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                  {callModal.payment_type === "bank" ? (
+                    <>
+                      <Banknote className="h-4 w-4 text-blue-600" />
+                      Bank / UPI
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-4 w-4 text-emerald-600" />
+                      Cash on Delivery
+                    </>
+                  )}
+                  <span className="text-primary">· ₹{callModal.total.toFixed(2)}</span>
+                </span>
+              </div>
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Delivery</span>
+                <span className="text-sm font-bold text-slate-900 capitalize text-right">
+                  {formatDeliveryType(callModal.delivery_type)}
+                </span>
+              </div>
+              <div className="flex justify-between items-start gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">Items</span>
+                <div className="text-sm text-slate-800 text-right space-y-1">
+                  <p className="font-bold">{formatOrderItemsSummary(callModal.items)}</p>
+                  <ul className="text-xs text-slate-600 space-y-0.5">
+                    {callModal.items.slice(0, 4).map((item) => (
+                      <li key={item.id}>
+                        {item.book_name} — {item.quantity} {item.quantity === 1 ? "book" : "books"}
+                      </li>
+                    ))}
+                    {callModal.items.length > 4 && (
+                      <li className="text-slate-400">+{callModal.items.length - 4} more…</li>
+                    )}
+                  </ul>
+                </div>
               </div>
             </div>
+
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Confirm order details, book quantities, courier type, and payment status with the customer.
+              Once verified, assign to the packer.
+            </p>
           </div>
-        </div>
-      )}
+        ) : null}
+      </MobileSheet>
 
       {/* CRUD Book edit/add modal */}
-      {isBookModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overscroll-none touch-none">
-          <form onSubmit={handleSaveBook} className="bg-white rounded-sm p-4 sm:p-6 max-w-lg w-full space-y-4 shadow-lg border overflow-y-auto max-h-[90vh] mx-2 sm:mx-0">
-            <h3 className="text-lg font-bold text-slate-800">
-              {editingBook ? "Edit Book details" : "Add new book to store"}
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground">Book Name (English)</label>
-                <Input
-                  required
-                  value={bookFormData.name_en}
-                  onChange={e => setBookFormData(prev => ({ ...prev, name_en: e.target.value }))}
-                  placeholder="e.g. Makhfoozat Ka Aasan Nisab"
-                />
-              </div>
-              <div className="space-y-1 text-right">
-                <label className="font-bold text-muted-foreground block text-left">Book Name (Urdu)</label>
-                <Input
-                  required
-                  value={bookFormData.name_ur}
-                  onChange={e => setBookFormData(prev => ({ ...prev, name_ur: e.target.value }))}
-                  placeholder="ملفوظات کا آسان نصاب"
-                  className="text-right"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground">Price (₹)</label>
-                <Input
-                  required
-                  type="number"
-                  value={bookFormData.price}
-                  onChange={e => setBookFormData(prev => ({ ...prev, price: e.target.value }))}
-                  placeholder="150"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground">Stock Qty</label>
-                <Input
-                  required
-                  type="number"
-                  value={bookFormData.stock}
-                  onChange={e => setBookFormData(prev => ({ ...prev, stock: e.target.value }))}
-                  placeholder="50"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground">Weight (grams)</label>
-                <Input
-                  required
-                  type="number"
-                  value={bookFormData.weight}
-                  onChange={e => setBookFormData(prev => ({ ...prev, weight: e.target.value }))}
-                  placeholder="80"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1 text-xs">
-              <label className="font-bold text-muted-foreground">Cover Image URL (optional — leave blank for name placeholder)</label>
+      <MobileSheet
+        open={isBookModalOpen}
+        onClose={() => setIsBookModalOpen(false)}
+        maxWidth="md"
+        title={editingBook ? "Edit Book details" : "Add new book to store"}
+        footer={
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 h-11 sm:h-10"
+              onClick={() => setIsBookModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" form="admin-book-form" className="flex-1 h-11 sm:h-10 bg-primary text-white font-bold">
+              Save Book
+            </Button>
+          </div>
+        }
+      >
+        <form id="admin-book-form" onSubmit={handleSaveBook} className="px-4 py-4 sm:px-6 sm:py-5 space-y-5">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className={adminFieldLabel}>Book Name (English)</label>
               <Input
-                value={bookFormData.image}
-                onChange={e => setBookFormData(prev => ({ ...prev, image: e.target.value }))}
-                placeholder="https://... or upload below"
+                required
+                value={bookFormData.name_en}
+                onChange={e => setBookFormData(prev => ({ ...prev, name_en: e.target.value }))}
+                placeholder="e.g. Makhfoozat Ka Aasan Nisab"
+                className={adminFieldInput}
               />
-              <div className="flex items-center gap-2 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
-                  <Upload className="h-3.5 w-3.5" />
-                  <span>Upload cover image</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploadingCover}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setUploadingCover(true);
-                      try {
-                        const url = await uploadImage(file, "book-covers");
-                        setBookFormData(prev => ({ ...prev, image: url }));
-                      } catch (err) {
-                        alert(err instanceof Error ? err.message : "Cover upload failed");
-                      } finally {
-                        setUploadingCover(false);
-                        e.target.value = "";
-                      }
-                    }}
-                  />
-                </label>
-                {uploadingCover && <span className="text-muted-foreground">Uploading…</span>}
+            </div>
+            <div className="space-y-1.5">
+              <label className={adminFieldLabel}>Book Name (Urdu)</label>
+              <Input
+                required
+                value={bookFormData.name_ur}
+                onChange={e => setBookFormData(prev => ({ ...prev, name_ur: e.target.value }))}
+                placeholder="ملفوظات کا آسان نصاب"
+                className={`${adminFieldInput} text-right`}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <label className={adminFieldLabel}>Price (₹)</label>
+              <Input
+                required
+                type="number"
+                inputMode="numeric"
+                value={bookFormData.price}
+                onChange={e => setBookFormData(prev => ({ ...prev, price: e.target.value }))}
+                placeholder="150"
+                className={`${adminFieldInput} tabular-nums`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className={adminFieldLabel}>Stock Qty</label>
+              <Input
+                required
+                type="number"
+                inputMode="numeric"
+                value={bookFormData.stock}
+                onChange={e => setBookFormData(prev => ({ ...prev, stock: e.target.value }))}
+                placeholder="50"
+                className={`${adminFieldInput} tabular-nums font-semibold`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className={adminFieldLabel}>Weight (grams)</label>
+              <Input
+                required
+                type="number"
+                inputMode="numeric"
+                value={bookFormData.weight}
+                onChange={e => setBookFormData(prev => ({ ...prev, weight: e.target.value }))}
+                placeholder="80"
+                className={`${adminFieldInput} tabular-nums`}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={adminFieldLabel}>Cover Image URL (optional)</label>
+            <Input
+              value={bookFormData.image}
+              onChange={e => setBookFormData(prev => ({ ...prev, image: e.target.value }))}
+              placeholder="https://... or upload below"
+              className={adminFieldInput}
+            />
+            <div className="flex items-center gap-2 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                <Upload className="h-4 w-4" />
+                <span>Upload cover image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingCover}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploadingCover(true);
+                    try {
+                      const url = await uploadImage(file, "book-covers");
+                      setBookFormData(prev => ({ ...prev, image: url }));
+                    } catch (err) {
+                      alert(err instanceof Error ? err.message : "Cover upload failed");
+                    } finally {
+                      setUploadingCover(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+              </label>
+              {uploadingCover && <span className="text-sm text-muted-foreground">Uploading…</span>}
+            </div>
+            {(bookFormData.image || bookFormData.name_en) && (
+              <div className="relative w-20 h-20 mt-2 rounded-xl border overflow-hidden">
+                <BookImage
+                  src={bookFormData.image}
+                  alt={bookFormData.name_en || "Preview"}
+                  fill
+                  className="object-cover"
+                />
               </div>
-              {(bookFormData.image || bookFormData.name_en) && (
-                <div className="relative w-20 h-20 mt-2 rounded border overflow-hidden">
-                  <BookImage
-                    src={bookFormData.image}
-                    alt={bookFormData.name_en || "Preview"}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              )}
-            </div>
+            )}
+          </div>
 
-            <div className="space-y-1 text-xs">
-              <label className="font-bold text-muted-foreground">Description (English)</label>
-              <Textarea
-                rows={2}
-                value={bookFormData.description_en}
-                onChange={e => setBookFormData(prev => ({ ...prev, description_en: e.target.value }))}
-                placeholder="Brief summary..."
-              />
-            </div>
+          <div className="space-y-1.5">
+            <label className={adminFieldLabel}>Description (English)</label>
+            <Textarea
+              rows={3}
+              value={bookFormData.description_en}
+              onChange={e => setBookFormData(prev => ({ ...prev, description_en: e.target.value }))}
+              placeholder="Brief summary..."
+              className={`${adminFieldInput} min-h-[5rem] py-3 resize-none`}
+            />
+          </div>
 
-            <div className="space-y-1 text-xs text-right">
-              <label className="font-bold text-muted-foreground block text-left">Description (Urdu)</label>
-              <Textarea
-                rows={2}
-                value={bookFormData.description_ur}
-                onChange={e => setBookFormData(prev => ({ ...prev, description_ur: e.target.value }))}
-                placeholder="تفصیل..."
-                className="text-right"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <label className={adminFieldLabel}>Description (Urdu)</label>
+            <Textarea
+              rows={3}
+              value={bookFormData.description_ur}
+              onChange={e => setBookFormData(prev => ({ ...prev, description_ur: e.target.value }))}
+              placeholder="تفصیل..."
+              className={`${adminFieldInput} min-h-[5rem] py-3 resize-none text-right`}
+            />
+          </div>
 
-            <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={bookFormData.is_quran}
-                onChange={e => setBookFormData(prev => ({ ...prev, is_quran: e.target.checked }))}
-                className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer shrink-0"
-              />
-              <span>Mark as <span className="font-bold text-emerald-700">Quran Sharif</span> — flat ₹25/copy discount, no % discount applied</span>
-            </label>
-
-            <div className="flex gap-3 pt-2 justify-end text-xs">
-              <Button type="button" variant="outline" onClick={() => setIsBookModalOpen(false)}>Cancel</Button>
-              <Button type="submit" className="bg-primary text-white font-bold">Save Book</Button>
-            </div>
-          </form>
-        </div>
-      )}
+          <label className="flex items-start gap-3 text-sm text-foreground cursor-pointer select-none p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <input
+              type="checkbox"
+              checked={bookFormData.is_quran}
+              onChange={e => setBookFormData(prev => ({ ...prev, is_quran: e.target.checked }))}
+              className="h-5 w-5 mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer shrink-0"
+            />
+            <span>
+              Mark as <span className="font-bold text-emerald-700">Quran Sharif</span> — flat ₹25/copy discount, no % discount applied
+            </span>
+          </label>
+        </form>
+      </MobileSheet>
 
       <Toast
         message={toast.message}

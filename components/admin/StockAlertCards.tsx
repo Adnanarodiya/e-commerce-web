@@ -41,44 +41,46 @@ function CompactStockRow({
 
   return (
     <div
-      className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border bg-white ${
+      className={`flex flex-col gap-3 p-3 rounded-lg border bg-white ${
         isOut ? "border-l-4 border-l-red-500 border-slate-200" : "border-l-4 border-l-amber-500 border-slate-200"
       }`}
     >
-      <div className="relative w-10 h-10 shrink-0 rounded-md border border-slate-200 overflow-hidden">
-        <BookImage src={book.image} alt={book.name_en} fill className="object-cover" />
-      </div>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="relative w-10 h-10 shrink-0 rounded-md border border-slate-200 overflow-hidden">
+          <BookImage src={book.image} alt={book.name_en} fill className="object-cover" />
+        </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-sm text-slate-900 truncate">{book.name_en}</span>
-          <Badge
-            variant="outline"
-            className={`text-[10px] font-semibold ${
-              isOut
-                ? "bg-red-50 text-red-700 border-red-200"
-                : "bg-amber-50 text-amber-800 border-amber-200"
-            }`}
-          >
-            {isOut ? "Out of stock" : `${book.stock} left`}
-          </Badge>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-sm text-slate-900 leading-snug">{book.name_en}</span>
+            <Badge
+              variant="outline"
+              className={`text-[10px] font-semibold tabular-nums ${
+                isOut
+                  ? "bg-red-50 text-red-700 border-red-200"
+                  : "bg-amber-50 text-amber-800 border-amber-200"
+              }`}
+            >
+              {isOut ? "Out of stock" : `${book.stock.toLocaleString()} left`}
+            </Badge>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex gap-2 w-full">
         <Input
           type="number"
+          inputMode="numeric"
           min={1}
-          placeholder="Qty"
-          className="w-20 h-8 text-sm"
+          placeholder="Quantity to add"
+          className="flex-1 min-w-0 h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-base tabular-nums font-semibold shadow-none placeholder:text-slate-400 focus-visible:bg-white focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 sm:h-9 sm:text-sm"
           value={reorderAmount[book.id] || ""}
           onChange={(e) =>
             onReorderChange(book.id, parseInt(e.target.value, 10) || 0)
           }
         />
         <Button
-          size="sm"
-          className={`h-8 text-xs font-semibold ${
+          className={`h-11 shrink-0 px-4 text-sm font-semibold sm:h-9 sm:text-xs ${
             isOut ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"
           } text-white`}
           onClick={() => onAddStock(book.id)}
@@ -103,7 +105,7 @@ export default function StockAlertCards({
   return (
     <Card className="rounded-xl border border-slate-200 shadow-sm">
       <CardContent className="p-4 sm:p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -113,13 +115,13 @@ export default function StockAlertCards({
               {outOfStock.length} out of stock · {lowStock.length} running low
             </p>
           </div>
-          <Button variant="outline" size="sm" className="font-semibold shrink-0" onClick={onViewAll}>
+          <Button variant="outline" size="sm" className="font-semibold w-full sm:w-auto" onClick={onViewAll}>
             Manage stock
             <ArrowRight className="h-4 w-4 ml-1.5" />
           </Button>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           {outOfStock.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-wide text-red-600 flex items-center gap-1.5">

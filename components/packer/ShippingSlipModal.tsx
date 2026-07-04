@@ -106,7 +106,7 @@ export default function ShippingSlipModal({
         role="presentation"
       >
         <div
-          className="bg-white text-black w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl border border-gray-200 max-h-[92vh] sm:max-h-[90vh] flex flex-col"
+          className="bg-white text-black w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl border border-gray-200 h-[90dvh] max-h-[90dvh] sm:h-auto sm:max-h-[90vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="shrink-0 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 border-b border-gray-100">

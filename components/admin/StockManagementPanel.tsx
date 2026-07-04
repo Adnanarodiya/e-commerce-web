@@ -20,6 +20,9 @@ interface StockManagementPanelProps {
 
 type Filter = "all" | "out" | "low";
 
+const qtyInputClass =
+  "flex-1 min-w-0 h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-base tabular-nums font-semibold shadow-none placeholder:text-slate-400 focus-visible:bg-white focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 md:h-9 md:text-sm";
+
 function StatusBadge({ stock, threshold }: { stock: number; threshold: number }) {
   if (stock === 0) {
     return (
@@ -31,7 +34,7 @@ function StatusBadge({ stock, threshold }: { stock: number; threshold: number })
   if (stock < threshold) {
     return (
       <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 font-semibold">
-        Low — {stock} left
+        Low — {stock.toLocaleString()} left
       </Badge>
     );
   }
@@ -42,7 +45,7 @@ function StatusBadge({ stock, threshold }: { stock: number; threshold: number })
   );
 }
 
-function StockTableRow({
+function StockItemCard({
   book,
   threshold,
   reorderAmount,
@@ -64,68 +67,67 @@ function StockTableRow({
         ? "border-l-amber-500"
         : "border-l-slate-200";
 
+  const stockTone =
+    book.stock === 0
+      ? "bg-red-100 text-red-800"
+      : book.stock < threshold
+        ? "bg-amber-100 text-amber-900"
+        : "bg-slate-100 text-slate-800";
+
   return (
-    <tr className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/80 ${accent} border-l-4`}>
-      <td className="p-4 align-middle">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative w-12 h-12 shrink-0 rounded-lg border border-slate-200 overflow-hidden bg-white">
-            <BookImage src={book.image} alt={book.name_en} fill className="object-cover" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-sm text-slate-900 truncate">{book.name_en}</p>
-            <p className="text-xs text-muted-foreground truncate">{book.name_ur}</p>
+    <div
+      className={`p-4 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 ${accent} border-l-4`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="relative w-14 h-14 shrink-0 rounded-lg border border-slate-200 overflow-hidden bg-white">
+          <BookImage src={book.image} alt={book.name_en} fill className="object-cover" />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-slate-900 leading-snug">{book.name_en}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{book.name_ur}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold tabular-nums ${stockTone}`}
+            >
+              {book.stock.toLocaleString()} in stock
+            </span>
+            <StatusBadge stock={book.stock} threshold={threshold} />
           </div>
         </div>
-      </td>
 
-      <td className="p-4 align-middle text-center">
-        <span
-          className={`inline-flex items-center justify-center min-w-[2.5rem] h-9 px-2 rounded-lg text-sm font-bold tabular-nums ${
-            book.stock === 0
-              ? "bg-red-100 text-red-800"
-              : book.stock < threshold
-                ? "bg-amber-100 text-amber-900"
-                : "bg-slate-100 text-slate-800"
-          }`}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-9 shrink-0 text-slate-600 -mr-1"
+          onClick={() => onEditBook(book)}
+          aria-label={`Edit ${book.name_en}`}
         >
-          {book.stock}
-        </span>
-      </td>
-
-      <td className="p-4 align-middle">
-        <StatusBadge stock={book.stock} threshold={threshold} />
-      </td>
-
-      <td className="p-4 align-middle">
-        <div className="flex gap-2 max-w-xs">
-          <Input
-            type="number"
-            min={1}
-            placeholder="Qty to add"
-            className="h-9 text-sm flex-1 min-w-0"
-            value={reorderAmount[book.id] || ""}
-            onChange={(e) =>
-              onReorderChange(book.id, parseInt(e.target.value, 10) || 0)
-            }
-          />
-          <Button
-            size="sm"
-            className="h-9 shrink-0 bg-primary text-primary-foreground font-semibold px-4"
-            onClick={() => onAddStock(book.id)}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add
-          </Button>
-        </div>
-      </td>
-
-      <td className="p-4 align-middle text-right">
-        <Button size="sm" variant="ghost" className="h-9 text-slate-600" onClick={() => onEditBook(book)}>
-          <Edit2 className="h-4 w-4 mr-1.5" />
-          Edit
+          <Edit2 className="h-4 w-4" />
         </Button>
-      </td>
-    </tr>
+      </div>
+
+      <div className="flex gap-2 mt-3">
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          placeholder="Qty to add"
+          className={qtyInputClass}
+          value={reorderAmount[book.id] || ""}
+          onChange={(e) =>
+            onReorderChange(book.id, parseInt(e.target.value, 10) || 0)
+          }
+        />
+        <Button
+          className="h-11 shrink-0 bg-primary text-primary-foreground font-semibold px-4 md:h-9"
+          onClick={() => onAddStock(book.id)}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Add
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -154,7 +156,7 @@ export default function StockManagementPanel({
     <button
       type="button"
       onClick={() => setFilter(id)}
-      className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
         filter === id
           ? activeClass
           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -175,7 +177,7 @@ export default function StockManagementPanel({
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">Out of stock</p>
-              <p className="text-2xl font-bold text-slate-900">{outOfStock.length}</p>
+              <p className="text-2xl font-bold text-slate-900 tabular-nums">{outOfStock.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -189,7 +191,7 @@ export default function StockManagementPanel({
               <p className="text-xs font-medium text-muted-foreground">
                 Low stock (&lt;{lowStockThreshold})
               </p>
-              <p className="text-2xl font-bold text-slate-900">{lowStock.length}</p>
+              <p className="text-2xl font-bold text-slate-900 tabular-nums">{lowStock.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -201,7 +203,7 @@ export default function StockManagementPanel({
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">Total titles</p>
-              <p className="text-2xl font-bold text-slate-900">{books.length}</p>
+              <p className="text-2xl font-bold text-slate-900 tabular-nums">{books.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -220,11 +222,11 @@ export default function StockManagementPanel({
       ) : (
         <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="pb-3 border-b border-slate-100 bg-white">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-col gap-3">
               <div>
                 <CardTitle className="text-lg">Critical inventory</CardTitle>
                 <CardDescription className="mt-1">
-                  Enter how many copies to add and click Add. Titles with fewer than {lowStockThreshold} copies appear here.
+                  Enter how many copies to add and tap Add. Titles with fewer than {lowStockThreshold} copies appear here.
                 </CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -241,31 +243,18 @@ export default function StockManagementPanel({
                 No books in this filter.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px] text-left">
-                  <thead>
-                    <tr className="bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500 border-b border-slate-200">
-                      <th className="p-3 pl-5 font-bold">Book</th>
-                      <th className="p-3 text-center w-20">Stock</th>
-                      <th className="p-3 w-32">Status</th>
-                      <th className="p-3">Add stock</th>
-                      <th className="p-3 pr-5 text-right w-24" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleBooks.map((book) => (
-                      <StockTableRow
-                        key={book.id}
-                        book={book}
-                        threshold={lowStockThreshold}
-                        reorderAmount={reorderAmount}
-                        onReorderChange={onReorderChange}
-                        onAddStock={onAddStock}
-                        onEditBook={onEditBook}
-                      />
-                    ))}
-                  </tbody>
-                </table>
+              <div>
+                {visibleBooks.map((book) => (
+                  <StockItemCard
+                    key={book.id}
+                    book={book}
+                    threshold={lowStockThreshold}
+                    reorderAmount={reorderAmount}
+                    onReorderChange={onReorderChange}
+                    onAddStock={onAddStock}
+                    onEditBook={onEditBook}
+                  />
+                ))}
               </div>
             )}
           </CardContent>
