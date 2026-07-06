@@ -18,6 +18,7 @@ interface Book {
   name_en: string;
   name_ur: string;
   price: number;
+  cost_price: number;
   description_en: string;
   description_ur: string;
   image: string;
@@ -61,6 +62,7 @@ interface Setting {
 }
 
 const DEFAULT_BOOKS: Book[] = CATALOG_DEFAULT_BOOKS;
+const MOCK_BOOKS_KEY = "mock_books_v5";
 
 // Helper to get/set mock DB
 const getMockDB = () => {
@@ -68,9 +70,9 @@ const getMockDB = () => {
     return { books: DEFAULT_BOOKS, orders: [], orderItems: [], settings: [] };
   }
 
-  let books = localStorage.getItem("mock_books_v4");
+  let books = localStorage.getItem(MOCK_BOOKS_KEY);
   if (!books) {
-    localStorage.setItem("mock_books_v4", JSON.stringify(DEFAULT_BOOKS));
+    localStorage.setItem(MOCK_BOOKS_KEY, JSON.stringify(DEFAULT_BOOKS));
     books = JSON.stringify(DEFAULT_BOOKS);
   }
 
@@ -107,7 +109,7 @@ const getMockDB = () => {
 
 const saveMockDB = (db: { books: Book[]; orders: Order[]; orderItems: OrderItem[]; settings: Setting[] }) => {
   if (typeof window !== "undefined") {
-    localStorage.setItem("mock_books_v4", JSON.stringify(db.books));
+    localStorage.setItem(MOCK_BOOKS_KEY, JSON.stringify(db.books));
     localStorage.setItem("mock_orders", JSON.stringify(db.orders));
     localStorage.setItem("mock_order_items", JSON.stringify(db.orderItems));
     localStorage.setItem("mock_settings", JSON.stringify(db.settings));

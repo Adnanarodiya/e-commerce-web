@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS books (
   name_en TEXT NOT NULL,
   name_ur TEXT NOT NULL,
   price NUMERIC NOT NULL,
+  cost_price NUMERIC NOT NULL DEFAULT 0, -- Purchase / buying price
   description_en TEXT,
   description_ur TEXT,
   image TEXT NOT NULL,

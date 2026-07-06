@@ -15,11 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   TrendingUp, BarChart3, BookOpen,
-  Settings, Layers, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package
+  Settings, Layers, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, HandCoins
 } from "lucide-react";
 import Image from "next/image";
 import { downloadInvoicePdf } from "@/lib/pdf-download";
 import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
+import { stockValuation, sumGrossProfit, unitMargin, formatRupee } from "@/lib/profit";
 import MobileSheet from "@/components/ui/MobileSheet";
 import StockAlertCards from "@/components/admin/StockAlertCards";
 import StockManagementPanel from "@/components/admin/StockManagementPanel";
@@ -35,6 +36,7 @@ interface Book {
   name_en: string;
   name_ur: string;
   price: number;
+  cost_price: number;
   description_en: string;
   description_ur: string;
   image: string;
@@ -110,6 +112,7 @@ export default function AdminDashboard() {
   const [bookFormData, setBookFormData] = useState({
     name_en: "",
     name_ur: "",
+    cost_price: "",
     price: "",
     stock: "",
     weight: "80",
@@ -124,7 +127,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const allBooks = await db.getBooks();
-      setBooks(allBooks.map(b => ({ ...b, price: Number(b.price) })));
+      setBooks(allBooks.map(b => ({ ...b, price: Number(b.price), cost_price: Number(b.cost_price ?? 0) })));
 
       const allOrders = await db.getOrders();
       setOrders(allOrders.map(o => ({
@@ -195,8 +198,11 @@ export default function AdminDashboard() {
   }, []);
 
   // Calculations
-  const totalStockQuantity = books.reduce((sum, b) => sum + b.stock, 0);
-  const totalStockValue = books.reduce((sum, b) => sum + b.price * b.stock, 0);
+  const stockStats = stockValuation(books);
+  const totalStockQuantity = stockStats.quantity;
+  const totalStockValue = stockStats.atSellPrice;
+  const totalStockCost = stockStats.atCostPrice;
+  const stockMarginPotential = stockStats.potentialMargin;
   const outOfStockBooks = books.filter(b => b.stock === 0);
   const lowStockBooks = books.filter(b => b.stock > 0 && b.stock < LOW_STOCK_THRESHOLD);
   const criticalStockCount = outOfStockBooks.length + lowStockBooks.length;
@@ -226,6 +232,9 @@ export default function AdminDashboard() {
     .reduce((sum, o) => sum + o.total, 0);
 
   const totalEarnings = bankEarnings + cashEarnings;
+  const periodGrossProfit = sumGrossProfit(filteredOrders, books);
+  const profitMarginPct =
+    totalEarnings > 0 ? Math.round((periodGrossProfit / totalEarnings) * 100) : 0;
 
   // Actions
   const handleReadyToPackClick = (order: Order) => {
@@ -293,6 +302,7 @@ export default function AdminDashboard() {
     setBookFormData({
       name_en: "",
       name_ur: "",
+      cost_price: "",
       price: "",
       stock: "",
       weight: "80",
@@ -309,6 +319,7 @@ export default function AdminDashboard() {
     setBookFormData({
       name_en: book.name_en,
       name_ur: book.name_ur,
+      cost_price: String(book.cost_price ?? 0),
       price: String(book.price),
       stock: String(book.stock),
       weight: String(book.weight ?? 80),
@@ -325,6 +336,7 @@ export default function AdminDashboard() {
     const data = {
       name_en: bookFormData.name_en,
       name_ur: bookFormData.name_ur,
+      cost_price: Number(bookFormData.cost_price) || 0,
       price: Number(bookFormData.price),
       stock: Number(bookFormData.stock),
       weight: Number(bookFormData.weight) || 80,
@@ -527,15 +539,51 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <Card className="shadow-sm rounded-xl border border-border">
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Stock Valuation</p>
-                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-slate-800">₹{totalStockValue.toLocaleString()}</h3>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Gross Profit</p>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-emerald-600 tabular-nums">
+                        {formatRupee(periodGrossProfit)}
+                      </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        Total {totalStockQuantity} books in inventory
+                        {profitMarginPct}% margin on {formatRupee(totalEarnings)} revenue ({timeFilter})
+                      </p>
+                    </div>
+                    <HandCoins className="h-9 w-9 shrink-0 text-emerald-600 bg-emerald-50 p-1.5 rounded-lg" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm rounded-xl border border-border">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Total Revenue</p>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-purple-600 tabular-nums">
+                        {formatRupee(totalEarnings)}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
+                        Bank {formatRupee(bankEarnings)} · Cash {formatRupee(cashEarnings)}
+                      </p>
+                    </div>
+                    <BarChart3 className="h-9 w-9 shrink-0 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm rounded-xl border border-border">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Stock at Sell Price</p>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-slate-800 tabular-nums">
+                        {formatRupee(totalStockValue)}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
+                        {totalStockQuantity.toLocaleString()} books in inventory
                       </p>
                     </div>
                     <Layers className="h-9 w-9 shrink-0 text-primary/80 bg-primary/10 p-1.5 rounded-lg" />
@@ -547,10 +595,29 @@ export default function AdminDashboard() {
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Bank Revenue</p>
-                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-blue-600">₹{bankEarnings.toLocaleString()}</h3>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Stock at Cost Price</p>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-amber-700 tabular-nums">
+                        {formatRupee(totalStockCost)}
+                      </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        From bank/UPI transfer (confirmed)
+                        Potential margin if all sold: {formatRupee(stockMarginPotential)}
+                      </p>
+                    </div>
+                    <Package className="h-9 w-9 shrink-0 text-amber-600 bg-amber-50 p-1.5 rounded-lg" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm rounded-xl border border-border">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Bank Revenue</p>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-blue-600 tabular-nums">
+                        {formatRupee(bankEarnings)}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
+                        Bank / UPI (confirmed orders)
                       </p>
                     </div>
                     <TrendingUp className="h-9 w-9 shrink-0 text-blue-500 bg-blue-50 p-1.5 rounded-lg" />
@@ -563,27 +630,14 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-muted-foreground uppercase">Cash Revenue</p>
-                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-green-600">₹{cashEarnings.toLocaleString()}</h3>
+                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-green-600 tabular-nums">
+                        {formatRupee(cashEarnings)}
+                      </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        From cash payment orders (confirmed)
+                        Cash on delivery (confirmed)
                       </p>
                     </div>
                     <TrendingUp className="h-9 w-9 shrink-0 text-green-500 bg-green-50 p-1.5 rounded-lg" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-sm rounded-xl border border-border">
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Total Revenue</p>
-                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-purple-600">₹{totalEarnings.toLocaleString()}</h3>
-                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        Combined earnings in filtered period
-                      </p>
-                    </div>
-                    <BarChart3 className="h-9 w-9 shrink-0 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
                   </div>
                 </CardContent>
               </Card>
@@ -952,7 +1006,9 @@ export default function AdminDashboard() {
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
               <div>
                 <CardTitle className="text-lg font-bold">Books Stock Manager</CardTitle>
-                <CardDescription>Perform CRUD operations, manage cover images, pricing, and translations.</CardDescription>
+                <CardDescription>
+                  Buying price, selling price, stock, and margin per book. Gross profit on the dashboard uses these buying prices.
+                </CardDescription>
               </div>
               <Button onClick={handleOpenAddBook} size="sm" className="bg-primary text-primary-foreground flex items-center justify-center gap-2 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
@@ -961,22 +1017,36 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {books.map(book => (
+                {books.map(book => {
+                  const { margin, percent } = unitMargin(book.cost_price ?? 0, book.price);
+                  return (
                   <Card key={book.id} className="border flex flex-col justify-between">
                     <CardHeader className="p-4 pb-2">
                       <div className="flex gap-3">
                         <div className="relative w-16 h-16 shrink-0 rounded border border-border overflow-hidden">
                           <BookImage src={book.image} alt={book.name_en} fill className="object-cover" />
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-sm text-foreground truncate">{book.name_en}</h4>
-                          <h5 className="text-xs text-muted-foreground truncate">{book.name_ur}</h5>
-                          <div className="flex flex-wrap gap-1.5 mt-1.5 items-center">
-                            <span className="font-bold text-xs tabular-nums">₹{book.price.toLocaleString()}</span>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-sm text-foreground leading-snug">{book.name_en}</h4>
+                          <h5 className="text-xs text-muted-foreground truncate mt-0.5">{book.name_ur}</h5>
+                          <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
+                            <div className="rounded-lg bg-amber-50 border border-amber-100 px-2 py-1.5">
+                              <p className="text-[10px] font-semibold uppercase text-amber-700">Buying</p>
+                              <p className="font-bold tabular-nums text-amber-900">{formatRupee(book.cost_price ?? 0, 2)}</p>
+                            </div>
+                            <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-2 py-1.5">
+                              <p className="text-[10px] font-semibold uppercase text-emerald-700">Selling</p>
+                              <p className="font-bold tabular-nums text-emerald-900">{formatRupee(book.price, 2)}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mt-2 items-center">
+                            <Badge variant="outline" className="text-[10px] tabular-nums bg-slate-50">
+                              Margin: {formatRupee(margin, 2)} ({percent.toFixed(0)}%)
+                            </Badge>
                             <Badge variant={book.stock === 0 ? "destructive" : book.stock < LOW_STOCK_THRESHOLD ? "secondary" : "outline"} className={`text-[10px] tabular-nums ${book.stock > 0 && book.stock < LOW_STOCK_THRESHOLD ? "bg-amber-100 text-amber-800 border-amber-300" : ""}`}>
                               Stock: {book.stock.toLocaleString()}
                             </Badge>
-                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground tabular-nums">
                               {book.weight ?? 80}g
                             </Badge>
                             {book.is_quran && (
@@ -1003,7 +1073,8 @@ export default function AdminDashboard() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -1255,9 +1326,21 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label className={adminFieldLabel}>Price (₹)</label>
+              <label className={adminFieldLabel}>Buying price (₹)</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={bookFormData.cost_price}
+                onChange={e => setBookFormData(prev => ({ ...prev, cost_price: e.target.value }))}
+                placeholder="13.50"
+                className={`${adminFieldInput} tabular-nums`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className={adminFieldLabel}>Selling price (₹)</label>
               <Input
                 required
                 type="number"
@@ -1265,9 +1348,12 @@ export default function AdminDashboard() {
                 value={bookFormData.price}
                 onChange={e => setBookFormData(prev => ({ ...prev, price: e.target.value }))}
                 placeholder="150"
-                className={`${adminFieldInput} tabular-nums`}
+                className={`${adminFieldInput} tabular-nums font-semibold`}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className={adminFieldLabel}>Stock Qty</label>
               <Input
