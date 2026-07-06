@@ -1,9 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { normalizePincode } from "@/lib/pincode";
+import { calculateShippingCharge, shippingRateDescription } from "@/lib/shipping";
 
 export type DeliveryType = "courier" | "post" | "in_person";
 export type PaymentType = "cash" | "bank";
+export type PincodeStatus = "idle" | "loading" | "valid" | "invalid";
 
 interface CartItem {
   id: number;
@@ -15,6 +18,12 @@ interface CartItem {
   is_quran?: boolean;
 }
 
+export interface PincodeInfo {
+  state: string;
+  district: string;
+  isGujarat: boolean;
+}
+
 interface CartContextProps {
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
@@ -22,16 +31,23 @@ interface CartContextProps {
   clearCart: () => void;
   updateQuantity: (id: number, quantity: number) => void;
 
-  // Custom checkout values
   deliveryType: DeliveryType;
   setDeliveryType: (type: DeliveryType) => void;
   paymentType: PaymentType;
   setPaymentType: (type: PaymentType) => void;
+
+  deliveryPincode: string;
+  setDeliveryPincode: (pin: string) => void;
+  pincodeStatus: PincodeStatus;
+  pincodeInfo: PincodeInfo | null;
+  lookupPincode: (pin: string) => Promise<void>;
+
   subtotal: number;
   discount: number;
   quranDiscount: number;
   percentageDiscount: number;
   packagingCharge: number;
+  shippingDescription: string;
   total: number;
   totalWeightGrams: number;
   totalWeightKg: number;
@@ -43,19 +59,83 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("courier");
   const [paymentType, setPaymentType] = useState<PaymentType>("cash");
+  const [deliveryPincode, setDeliveryPincodeState] = useState("");
+  const [pincodeStatus, setPincodeStatus] = useState<PincodeStatus>("idle");
+  const [pincodeInfo, setPincodeInfo] = useState<PincodeInfo | null>(null);
 
   useEffect(() => {
     const savedCart = localStorage.getItem("cart");
     if (savedCart) {
-      // Normalize legacy items that have no weight (default 80g)
       const parsed: CartItem[] = JSON.parse(savedCart);
       setCart(parsed.map((i) => ({ ...i, weight: i.weight ?? 80, is_quran: i.is_quran ?? false })));
     }
+
+    const savedPin = localStorage.getItem("deliveryPincode");
+    if (savedPin) setDeliveryPincodeState(savedPin);
   }, []);
 
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    if (deliveryPincode) {
+      localStorage.setItem("deliveryPincode", deliveryPincode);
+    } else {
+      localStorage.removeItem("deliveryPincode");
+    }
+  }, [deliveryPincode]);
+
+  const lookupPincode = useCallback(async (raw: string) => {
+    const pin = normalizePincode(raw);
+    setDeliveryPincodeState(pin);
+
+    if (pin.length !== 6) {
+      setPincodeStatus("idle");
+      setPincodeInfo(null);
+      return;
+    }
+
+    setPincodeStatus("loading");
+    try {
+      const res = await fetch(`/api/pincode/${pin}`);
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setPincodeInfo({
+          state: data.state,
+          district: data.district,
+          isGujarat: data.isGujarat,
+        });
+        setPincodeStatus("valid");
+      } else {
+        setPincodeInfo(null);
+        setPincodeStatus("invalid");
+      }
+    } catch {
+      setPincodeInfo(null);
+      setPincodeStatus("invalid");
+    }
+  }, []);
+
+  const setDeliveryPincode = useCallback(
+    (raw: string) => {
+      const pin = normalizePincode(raw);
+      setDeliveryPincodeState(pin);
+      if (pin.length === 6) {
+        void lookupPincode(pin);
+      } else {
+        setPincodeStatus("idle");
+        setPincodeInfo(null);
+      }
+    },
+    [lookupPincode]
+  );
+
+  useEffect(() => {
+    if (deliveryPincode.length === 6 && pincodeStatus === "idle") {
+      void lookupPincode(deliveryPincode);
+    }
+  }, [deliveryPincode, pincodeStatus, lookupPincode]);
 
   const addToCart = (item: CartItem) => {
     const amount = Math.max(1, item.quantity);
@@ -91,12 +171,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     );
   };
 
-  // 1. Calculate subtotal (all items, including Quran)
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // 1a. Split subtotal into Quran / non-Quran portions
-  //     Quran items get a flat ₹25 off per copy and never qualify for % discount.
-  //     Non-Quran items qualify for 10% (bank) / 15% (cash) when the *full* subtotal ≥ ₹5000.
   const QURAN_FLAT_DISCOUNT_PER_COPY = 25;
   const quranSubtotal = cart.reduce(
     (sum, item) => (item.is_quran ? sum + item.price * item.quantity : sum),
@@ -108,38 +184,43 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     0
   );
 
-  // 2. Calculate total weight (grams) from book weights x quantities
   const totalWeightGrams = cart.reduce(
     (sum, item) => sum + (item.weight ?? 80) * item.quantity,
     0
   );
   const totalWeightKg = totalWeightGrams / 1000;
 
-  // 3. Weight-based packaging: ₹10 per kg, rounded up to the next whole kg.
-  //    In Person pickup = ₹0. (1 kg = ₹10, 10 kg = ₹100)
-  let packagingCharge = 0;
-  if (deliveryType !== "in_person" && totalWeightGrams > 0) {
-    const chargeableKg = Math.ceil(totalWeightGrams / 1000);
-    packagingCharge = chargeableKg * 10;
-  }
+  const isGujaratForShipping =
+    deliveryType === "in_person"
+      ? null
+      : pincodeStatus === "valid" && pincodeInfo
+        ? pincodeInfo.isGujarat
+        : null;
 
-  // 4. Quran flat discount: ₹25 per copy, always applies
+  const packagingCharge = calculateShippingCharge(
+    deliveryType,
+    totalWeightGrams,
+    isGujaratForShipping
+  );
+
+  const shippingDescription = shippingRateDescription(
+    deliveryType,
+    isGujaratForShipping,
+    totalWeightGrams
+  );
+
   const quranDiscount = Math.min(quranSubtotal, quranQty * QURAN_FLAT_DISCOUNT_PER_COPY);
 
-  // 5. Tiered percentage discount: applies only to non-Quran subtotal,
-  //    and only when the full cart subtotal (incl. Quran) is ≥ ₹5000.
   let percentageDiscount = 0;
   if (subtotal >= 5000 && nonQuranSubtotal > 0) {
     if (paymentType === "bank") {
-      percentageDiscount = nonQuranSubtotal * 0.10; // 10%
+      percentageDiscount = nonQuranSubtotal * 0.10;
     } else if (paymentType === "cash") {
-      percentageDiscount = nonQuranSubtotal * 0.15; // 15%
+      percentageDiscount = nonQuranSubtotal * 0.15;
     }
   }
 
   const discount = quranDiscount + percentageDiscount;
-
-  // 6. Calculate final total
   const total = Math.max(0, subtotal - discount + packagingCharge);
 
   return (
@@ -154,14 +235,20 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         setDeliveryType,
         paymentType,
         setPaymentType,
+        deliveryPincode,
+        setDeliveryPincode,
+        pincodeStatus,
+        pincodeInfo,
+        lookupPincode,
         subtotal,
         discount,
         quranDiscount,
         percentageDiscount,
         packagingCharge,
+        shippingDescription,
         total,
         totalWeightGrams,
-        totalWeightKg
+        totalWeightKg,
       }}
     >
       {children}

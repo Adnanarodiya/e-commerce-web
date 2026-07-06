@@ -13,6 +13,7 @@ import { ArrowLeft, CheckCircle, CreditCard, Shield, Truck, Phone } from "lucide
 import Link from "next/link";
 import BookImage from "@/components/ui/BookImage";
 import Image from "next/image";
+import PincodeField from "@/components/checkout/PincodeField";
 
 export default function Checkout() {
   const {
@@ -23,10 +24,15 @@ export default function Checkout() {
     quranDiscount,
     percentageDiscount,
     packagingCharge,
+    shippingDescription,
     total,
     deliveryType,
     paymentType,
-    setPaymentType
+    setPaymentType,
+    deliveryPincode,
+    setDeliveryPincode,
+    pincodeStatus,
+    pincodeInfo,
   } = useCart();
   const { t, isRtl } = useLanguage();
 
@@ -58,6 +64,34 @@ export default function Checkout() {
     paymentType: "bank" | "cash";
   } | null>(null);
   const [stockError, setStockError] = useState("");
+
+  useEffect(() => {
+    if (deliveryPincode && !formData.zipCode) {
+      setFormData((prev) => ({ ...prev, zipCode: deliveryPincode }));
+    }
+  }, [deliveryPincode]);
+
+  useEffect(() => {
+    if (pincodeStatus === "valid" && pincodeInfo?.state) {
+      setFormData((prev) => ({
+        ...prev,
+        state: pincodeInfo.state,
+        city: prev.city || pincodeInfo.district,
+      }));
+    }
+  }, [pincodeStatus, pincodeInfo]);
+
+  const handleZipChange = (value: string) => {
+    setDeliveryPincode(value);
+    setFormData((prev) => ({ ...prev, zipCode: value }));
+    if (errors.zipCode) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.zipCode;
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     async function loadSettings() {
@@ -114,6 +148,20 @@ export default function Checkout() {
 
     if (paymentType === "bank" && !confirmPaid) {
       newErrors.confirmPaid = "Please confirm that you have scanned the QR code and completed the payment";
+    }
+
+    if (deliveryType !== "in_person") {
+      if (pincodeStatus !== "valid") {
+        newErrors.zipCode = t("pincodeRequired");
+      } else if (
+        pincodeInfo &&
+        formData.state.trim() &&
+        formData.state.trim().toLowerCase() !== pincodeInfo.state.toLowerCase()
+      ) {
+        newErrors.state = isRtl
+          ? "ریاست پن کوڈ سے مماثل نہیں"
+          : `State must match pincode (${pincodeInfo.state})`;
+      }
     }
 
     setErrors(newErrors);
@@ -419,22 +467,23 @@ export default function Checkout() {
                     <p className="text-xs text-destructive text-start">{errors.state}</p>
                   )}
                 </div>
-                <div className="space-y-1 text-right">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
-                    {t("zipCode")}
-                  </label>
-                  <Input
-                    name="zipCode"
+                <div className="space-y-1 text-right sm:col-span-1">
+                  <PincodeField
                     value={formData.zipCode}
-                    onChange={handleInputChange}
-                    placeholder="400001"
-                    className={errors.zipCode ? "border-destructive" : ""}
+                    onChange={handleZipChange}
+                    status={pincodeStatus}
+                    state={pincodeInfo?.state}
+                    district={pincodeInfo?.district}
+                    isGujarat={pincodeInfo?.isGujarat}
+                    error={errors.zipCode}
                   />
-                  {errors.zipCode && (
-                    <p className="text-xs text-destructive text-start">{errors.zipCode}</p>
-                  )}
                 </div>
               </div>
+              {deliveryType !== "in_person" && pincodeStatus === "valid" && (
+                <p className="text-xs text-muted-foreground text-start">
+                  {shippingDescription}
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -591,12 +640,21 @@ export default function Checkout() {
                     <span>-₹{percentageDiscount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-muted-foreground">
-                  <span>{t("packaging")} ({deliveryType === "in_person" ? t("inPerson") : deliveryType === "post" ? t("post") : t("courier")})</span>
-                  <span className="font-medium text-foreground">
-                    {packagingCharge === 0 ? t("free") : `₹${packagingCharge.toFixed(2)}`}
+                <div className="flex justify-between text-muted-foreground gap-3">
+                  <span className="shrink-0">
+                    {t("packaging")} ({deliveryType === "in_person" ? t("inPerson") : deliveryType === "post" ? t("post") : t("courier")})
+                  </span>
+                  <span className="font-medium text-foreground text-end">
+                    {deliveryType !== "in_person" && pincodeStatus !== "valid"
+                      ? t("shippingPending")
+                      : packagingCharge === 0
+                        ? t("free")
+                        : `₹${packagingCharge.toFixed(2)}`}
                   </span>
                 </div>
+                {deliveryType !== "in_person" && pincodeStatus === "valid" && (
+                  <p className="text-[10px] text-muted-foreground text-end">{shippingDescription}</p>
+                )}
                 <Separator className="my-2" />
                 <div className="flex justify-between text-base font-semibold">
                   <span>{t("total")}</span>

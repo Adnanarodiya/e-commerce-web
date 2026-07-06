@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useCart, DeliveryType } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { CreditCard, Heart, Shield, Truck, Package, Mail, MapPin } from "lucide-react";
+import { CreditCard, Heart, Shield, Truck, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
+import PincodeField from "@/components/checkout/PincodeField";
 
 export default function OrderSummary() {
   const {
@@ -17,12 +18,17 @@ export default function OrderSummary() {
     quranDiscount,
     percentageDiscount,
     packagingCharge,
+    shippingDescription,
     total,
     totalWeightKg,
     deliveryType,
     setDeliveryType,
     paymentType,
-    setPaymentType
+    setPaymentType,
+    deliveryPincode,
+    setDeliveryPincode,
+    pincodeStatus,
+    pincodeInfo,
   } = useCart();
   const { t, isRtl } = useLanguage();
 
@@ -82,6 +88,31 @@ export default function OrderSummary() {
           </div>
         </div>
 
+        {deliveryType !== "in_person" && (
+          <div className="space-y-2 pt-2 border-t border-border">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block text-right" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+              {t("shippingRatesTitle")}
+            </label>
+            <PincodeField
+              value={deliveryPincode}
+              onChange={setDeliveryPincode}
+              status={pincodeStatus}
+              state={pincodeInfo?.state}
+              district={pincodeInfo?.district}
+              isGujarat={pincodeInfo?.isGujarat}
+            />
+            <p className="text-[11px] text-muted-foreground leading-relaxed text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+              {deliveryType === "courier"
+                ? isRtl
+                  ? "کورئیر: گجرات میں ₹30/کلو · باہر ₹50/کلو"
+                  : "Courier: ₹30/kg (Gujarat) · ₹50/kg (outside Gujarat)"
+                : isRtl
+                  ? "پوسٹ: ہر جگہ ₹50 فلیٹ"
+                  : "Post: ₹50 flat (all India)"}
+            </p>
+          </div>
+        )}
+
         {/* Payment Method Select (needed to compute correct discount) */}
         <div className="space-y-2 text-right pt-2" style={{ direction: isRtl ? "rtl" : "ltr" }}>
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
@@ -137,17 +168,14 @@ export default function OrderSummary() {
             </div>
           )}
 
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">
+          <div className="flex justify-between text-sm gap-3">
+            <span className="text-muted-foreground shrink-0">
               {t("packaging")}
-              {deliveryType !== "in_person" && totalWeightKg > 0 && (
-                <span className="text-[10px] text-muted-foreground/80">
-                  {" "}({isRtl ? `کل وزن ${totalWeightKg.toFixed(2)} کلو` : `${totalWeightKg.toFixed(2)} kg · ₹10/kg`})
-                </span>
-              )}
             </span>
-            <span className="font-medium">
-              {packagingCharge === 0 ? (
+            <span className="font-medium text-end">
+              {deliveryType !== "in_person" && pincodeStatus !== "valid" ? (
+                <span className="text-xs text-muted-foreground">{t("shippingPending")}</span>
+              ) : packagingCharge === 0 ? (
                 <Badge variant="secondary" className="text-xs">
                   {t("free")}
                 </Badge>
@@ -156,6 +184,11 @@ export default function OrderSummary() {
               )}
             </span>
           </div>
+          {deliveryType !== "in_person" && pincodeStatus === "valid" && (
+            <p className="text-[10px] text-muted-foreground text-end leading-snug">
+              {shippingDescription}
+            </p>
+          )}
 
           <Separator />
 
