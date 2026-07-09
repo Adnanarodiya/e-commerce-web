@@ -38,14 +38,21 @@ interface Order {
   subtotal: number;
   discount: number;
   packaging_charge: number;
+  courier_charge?: number;
   total: number;
   status: string;
   payment_confirmed: boolean;
   packed_at?: string | null;
   pickup_confirmed?: boolean;
   pickup_confirmed_at?: string | null;
+  admin_notes?: string | null;
+  confirmed_at?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
   created_at: string;
 }
+
+export type OrderStatus = "pending" | "ready_to_pack" | "packed" | "cancelled";
 
 interface OrderItem {
   id: number;
@@ -242,7 +249,7 @@ export const db = {
     return true;
   },
 
-  async updateOrderStatus(id: string, status: "pending" | "ready_to_pack" | "packed", paymentConfirmed?: boolean): Promise<boolean> {
+  async updateOrderStatus(id: string, status: OrderStatus, paymentConfirmed?: boolean): Promise<boolean> {
     const now = new Date().toISOString();
     if (isRealSupabaseConfigured && supabase) {
       const updates: Partial<Order> = { status };
@@ -262,6 +269,98 @@ export const db = {
     if (status === "packed") {
       dbData.orders[orderIdx].packed_at = now;
     }
+    saveMockDB(dbData);
+    return true;
+  },
+
+  async confirmOrderWithCharges(
+    id: string,
+    charges: {
+      packaging_charge: number;
+      courier_charge: number;
+      total: number;
+      admin_notes?: string;
+    }
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+    const updates: Partial<Order> = {
+      packaging_charge: charges.packaging_charge,
+      courier_charge: charges.courier_charge,
+      total: charges.total,
+      admin_notes: charges.admin_notes ?? null,
+      status: "ready_to_pack",
+      confirmed_at: now,
+    };
+
+    if (isRealSupabaseConfigured && supabase) {
+      const { error } = await supabase.from("orders").update(updates).eq("id", id);
+      if (!error) return true;
+      console.error("Supabase confirm order error:", error);
+      return false;
+    }
+
+    const dbData = getMockDB();
+    const orderIdx = dbData.orders.findIndex((o: Order) => o.id === id);
+    if (orderIdx === -1) return false;
+    dbData.orders[orderIdx] = { ...dbData.orders[orderIdx], ...updates };
+    saveMockDB(dbData);
+    return true;
+  },
+
+  async cancelOrder(id: string, reason?: string): Promise<boolean> {
+    const now = new Date().toISOString();
+
+    const restoreStock = async (items: OrderItem[]) => {
+      for (const item of items) {
+        const book = await this.getBook(item.book_id);
+        if (book) {
+          await this.updateBook(item.book_id, { stock: book.stock + item.quantity });
+        }
+      }
+    };
+
+    if (isRealSupabaseConfigured && supabase) {
+      const { data: items, error: itemsErr } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", id);
+      if (itemsErr) {
+        console.error("Supabase cancel order — fetch items error:", itemsErr);
+        return false;
+      }
+
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "cancelled",
+          cancelled_at: now,
+          cancel_reason: reason ?? null,
+        })
+        .eq("id", id);
+      if (error) {
+        console.error("Supabase cancel order error:", error);
+        return false;
+      }
+
+      await restoreStock((items ?? []) as OrderItem[]);
+      return true;
+    }
+
+    const dbData = getMockDB();
+    const orderIdx = dbData.orders.findIndex((o: Order) => o.id === id);
+    if (orderIdx === -1) return false;
+
+    const items = dbData.orderItems.filter((i: OrderItem) => i.order_id === id);
+    for (const item of items) {
+      const bookIdx = dbData.books.findIndex((b: Book) => b.id === item.book_id);
+      if (bookIdx !== -1) {
+        dbData.books[bookIdx].stock += item.quantity;
+      }
+    }
+
+    dbData.orders[orderIdx].status = "cancelled";
+    dbData.orders[orderIdx].cancelled_at = now;
+    dbData.orders[orderIdx].cancel_reason = reason ?? null;
     saveMockDB(dbData);
     return true;
   },

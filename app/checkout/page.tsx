@@ -23,8 +23,6 @@ export default function Checkout() {
     discount,
     quranDiscount,
     percentageDiscount,
-    packagingCharge,
-    shippingDescription,
     total,
     deliveryType,
     paymentType,
@@ -226,7 +224,8 @@ export default function Checkout() {
       payment_type: paymentType,
       subtotal: subtotal,
       discount: discount,
-      packaging_charge: packagingCharge,
+      packaging_charge: 0,
+      courier_charge: 0,
       total: total,
       status: "pending",
       payment_confirmed: paymentType === "bank" ? confirmPaid : false,
@@ -274,7 +273,7 @@ export default function Checkout() {
         <p className="text-muted-foreground mb-6 text-sm sm:text-base">
           {t("orderSuccessDesc")}
         </p>
-        <div className="bg-muted/50 p-6 rounded-xl border border-border mb-8 text-left space-y-3" style={{ direction: "ltr" }}>
+        <div className="bg-muted/50 p-6 rounded-xl border border-border mb-8 text-start space-y-3" style={{ direction: isRtl ? "rtl" : "ltr" }}>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("orderId")}:</span>
             <span className="font-semibold text-foreground">{orderId}</span>
@@ -287,7 +286,7 @@ export default function Checkout() {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("shippingAddress")}:</span>
-            <span className="font-medium text-foreground text-right">
+            <span className="font-medium text-foreground text-end">
               {formData.firstName} {formData.lastName}<br />
               {formData.address}<br />
               {formData.city}, {formData.state} {formData.zipCode}
@@ -302,7 +301,7 @@ export default function Checkout() {
         </div>
         
         {successPaymentType === "bank" && (
-          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs sm:text-sm text-amber-800" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-start text-xs sm:text-sm text-amber-800" style={{ direction: isRtl ? "rtl" : "ltr" }}>
             <p className="font-semibold mb-1">{isRtl ? "بینک ٹرانسفر کے بارے میں نوٹ:" : "Note regarding bank transfer:"}</p>
             <p>
               {isRtl 
@@ -311,6 +310,10 @@ export default function Checkout() {
             </p>
           </div>
         )}
+
+        <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-xl text-start text-xs sm:text-sm text-blue-900" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+          <p>{t("shippingCallNotice")}</p>
+        </div>
 
         <Button size="lg" className="w-full bg-primary text-primary-foreground" asChild>
           <Link href="/">{t("continueShopping")}</Link>
@@ -333,7 +336,7 @@ export default function Checkout() {
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className={`mb-8 flex items-center justify-between ${isRtl ? "flex-row-reverse" : ""}`}>
-        <div className={isRtl ? "text-right" : "text-left"}>
+        <div className="text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
           <h1 className="text-3xl font-bold text-foreground">{t("checkout")}</h1>
         </div>
         <Button variant="ghost" asChild className="text-muted-foreground hover:text-foreground">
@@ -349,11 +352,11 @@ export default function Checkout() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className={`text-lg font-semibold ${isRtl ? "text-right" : "text-left"}`}>{t("shippingDetails")}</CardTitle>
+              <CardTitle className="text-lg font-semibold text-start">{t("shippingDetails")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4" style={{ direction: isRtl ? "rtl" : "ltr" }}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1 text-right">
+                <div className="space-y-1 text-start">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
                     {t("firstName")}
                   </label>
@@ -368,7 +371,7 @@ export default function Checkout() {
                     <p className="text-xs text-destructive text-start">{errors.firstName}</p>
                   )}
                 </div>
-                <div className="space-y-1 text-right">
+                <div className="space-y-1 text-start">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
                     {t("lastName")}
                   </label>
@@ -386,7 +389,7 @@ export default function Checkout() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1 text-right">
+                <div className="space-y-1 text-start">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
                     {t("email")}
                   </label>
@@ -402,7 +405,7 @@ export default function Checkout() {
                     <p className="text-xs text-destructive text-start">{errors.email}</p>
                   )}
                 </div>
-                <div className="space-y-1 text-right">
+                <div className="space-y-1 text-start">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
                     {isRtl ? "موبائل / فون نمبر" : "Phone / Mobile Number"}
                   </label>
@@ -420,7 +423,7 @@ export default function Checkout() {
                 </div>
               </div>
 
-              <div className="space-y-1 text-right">
+              <div className="space-y-1 text-start">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
                   {t("address")}
                 </label>
@@ -437,7 +440,7 @@ export default function Checkout() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1 text-right">
+                <div className="space-y-1 text-start">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
                     {t("city")}
                   </label>
@@ -452,7 +455,7 @@ export default function Checkout() {
                     <p className="text-xs text-destructive text-start">{errors.city}</p>
                   )}
                 </div>
-                <div className="space-y-1 text-right">
+                <div className="space-y-1 text-start">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
                     {t("state")}
                   </label>
@@ -467,7 +470,7 @@ export default function Checkout() {
                     <p className="text-xs text-destructive text-start">{errors.state}</p>
                   )}
                 </div>
-                <div className="space-y-1 text-right sm:col-span-1">
+                <div className="space-y-1 text-start sm:col-span-1">
                   <PincodeField
                     value={formData.zipCode}
                     onChange={handleZipChange}
@@ -481,20 +484,20 @@ export default function Checkout() {
               </div>
               {deliveryType !== "in_person" && pincodeStatus === "valid" && (
                 <p className="text-xs text-muted-foreground text-start">
-                  {shippingDescription}
+                  {t("pincodeCallNotice")}
                 </p>
               )}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className={`text-lg font-semibold flex items-center gap-2 ${isRtl ? "flex-row-reverse justify-start" : ""}`}>
+            <CardHeader className="text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+              <CardTitle className={`text-lg font-semibold flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
                 <CreditCard className="h-5 w-5 text-primary" />
                 <span>{t("paymentMethod")}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -525,7 +528,7 @@ export default function Checkout() {
               </div>
 
               {paymentType === "cash" ? (
-                <div className="p-4 bg-muted/40 border border-border rounded-xl text-xs sm:text-sm text-muted-foreground leading-relaxed animate-in fade-in duration-200 text-right" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+                <div className="p-4 bg-muted/40 border border-border rounded-xl text-xs sm:text-sm text-muted-foreground leading-relaxed animate-in fade-in duration-200">
                   <p className="font-medium text-foreground mb-1">{t("cod")}</p>
                   <p>{t("codDesc")}</p>
                 </div>
@@ -557,7 +560,7 @@ export default function Checkout() {
 
                   <div className={cn(
                     "flex items-start gap-3 p-3 border rounded-xl transition-all",
-                    isRtl ? "flex-row-reverse text-right" : "text-left",
+                    isRtl ? "flex-row-reverse" : "",
                     confirmPaid ? "bg-primary/5 border-primary/20" : "bg-background border-border"
                   )}>
                     <input
@@ -581,7 +584,7 @@ export default function Checkout() {
                     </label>
                   </div>
                   {errors.confirmPaid && (
-                    <p className={`text-xs text-destructive font-medium ${isRtl ? "text-right" : "text-left"}`}>{errors.confirmPaid}</p>
+                    <p className="text-xs text-destructive font-medium text-start">{errors.confirmPaid}</p>
                   )}
                 </div>
               )}
@@ -593,9 +596,9 @@ export default function Checkout() {
         <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className={`text-lg font-semibold ${isRtl ? "text-right" : "text-left"}`}>{isRtl ? "آپ کا آرڈر" : "Your Order"}</CardTitle>
+              <CardTitle className="text-lg font-semibold text-start">{isRtl ? "آپ کا آرڈر" : "Your Order"}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
               {/* Product items in checkout */}
               <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
                 {cart.map((item) => (
@@ -609,7 +612,7 @@ export default function Checkout() {
                         className="object-cover"
                       />
                     </div>
-                    <div className={`flex-grow min-w-0 ${isRtl ? "text-right" : "text-left"}`}>
+                    <div className="flex-grow min-w-0">
                       <h4 className="font-medium text-foreground truncate">{item.name}</h4>
                       <p className="text-xs text-muted-foreground">{t("qty")}: {item.quantity}</p>
                     </div>
@@ -623,7 +626,7 @@ export default function Checkout() {
               <Separator />
 
               {/* Cost Summary */}
-              <div className="space-y-2 text-sm" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">
                   <span>{t("subtotal")}</span>
                   <span className="font-medium text-foreground">₹{subtotal.toFixed(2)}</span>
@@ -640,21 +643,9 @@ export default function Checkout() {
                     <span>-₹{percentageDiscount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-muted-foreground gap-3">
-                  <span className="shrink-0">
-                    {t("packaging")} ({deliveryType === "in_person" ? t("inPerson") : deliveryType === "post" ? t("post") : t("courier")})
-                  </span>
-                  <span className="font-medium text-foreground text-end">
-                    {deliveryType !== "in_person" && pincodeStatus !== "valid"
-                      ? t("shippingPending")
-                      : packagingCharge === 0
-                        ? t("free")
-                        : `₹${packagingCharge.toFixed(2)}`}
-                  </span>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed">
+                  <p>{t("shippingCallNotice")}</p>
                 </div>
-                {deliveryType !== "in_person" && pincodeStatus === "valid" && (
-                  <p className="text-[10px] text-muted-foreground text-end">{shippingDescription}</p>
-                )}
                 <Separator className="my-2" />
                 <div className="flex justify-between text-base font-semibold">
                   <span>{t("total")}</span>
@@ -663,7 +654,7 @@ export default function Checkout() {
               </div>
 
               {stockError && (
-                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-xs sm:text-sm text-destructive font-medium" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-xs sm:text-sm text-destructive font-medium">
                   {stockError}
                 </div>
               )}
@@ -685,7 +676,7 @@ export default function Checkout() {
                 )}
               </Button>
 
-              <div className="space-y-2 pt-4 border-t border-border text-xs text-muted-foreground" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+              <div className="space-y-2 pt-4 border-t border-border text-xs text-muted-foreground">
                 <div className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
                   <Shield className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
                   <span>{t("secureSsl")}</span>

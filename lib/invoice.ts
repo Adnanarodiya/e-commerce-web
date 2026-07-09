@@ -18,6 +18,7 @@ export interface InvoiceData {
   quranDiscount?: number;
   percentageDiscount?: number;
   packaging_charge: number;
+  courier_charge?: number;
   total: number;
   created_at: string;
   items: InvoiceItem[];

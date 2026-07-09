@@ -12,7 +12,7 @@ export default function CartItemList() {
   const { t, isRtl } = useLanguage();
 
   return (
-    <Card>
+    <Card className="text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
       <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-4 ${isRtl ? "flex-row-reverse" : ""}`}>
         <CardTitle className="text-lg font-semibold">
           {isRtl ? "شاپنگ کارٹ کی تفصیل" : "Cart Items"}

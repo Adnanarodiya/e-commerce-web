@@ -1,10 +1,9 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useCart, DeliveryType } from "@/context/CartContext";
+import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { CreditCard, Heart, Shield, Truck, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -17,10 +16,7 @@ export default function OrderSummary() {
     discount,
     quranDiscount,
     percentageDiscount,
-    packagingCharge,
-    shippingDescription,
     total,
-    totalWeightKg,
     deliveryType,
     setDeliveryType,
     paymentType,
@@ -33,18 +29,19 @@ export default function OrderSummary() {
   const { t, isRtl } = useLanguage();
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const dirStyle = { direction: isRtl ? ("rtl" as const) : ("ltr" as const) };
 
   return (
     <Card className="sticky top-4">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-right" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+        <CardTitle className="text-lg font-semibold text-start" style={dirStyle}>
           {t("orderSummary")}
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 text-start" style={dirStyle}>
         {/* Delivery Method Selection */}
-        <div className="space-y-2 text-right" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+        <div className="space-y-2">
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
             {t("deliveryMethod")}
           </label>
@@ -90,7 +87,7 @@ export default function OrderSummary() {
 
         {deliveryType !== "in_person" && (
           <div className="space-y-2 pt-2 border-t border-border">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block text-right" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
               {t("shippingRatesTitle")}
             </label>
             <PincodeField
@@ -101,20 +98,14 @@ export default function OrderSummary() {
               district={pincodeInfo?.district}
               isGujarat={pincodeInfo?.isGujarat}
             />
-            <p className="text-[11px] text-muted-foreground leading-relaxed text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
-              {deliveryType === "courier"
-                ? isRtl
-                  ? "کورئیر: گجرات میں ₹30/کلو · باہر ₹50/کلو"
-                  : "Courier: ₹30/kg (Gujarat) · ₹50/kg (outside Gujarat)"
-                : isRtl
-                  ? "پوسٹ: ہر جگہ ₹50 فلیٹ"
-                  : "Post: ₹50 flat (all India)"}
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {t("pincodeCallNotice")}
             </p>
           </div>
         )}
 
-        {/* Payment Method Select (needed to compute correct discount) */}
-        <div className="space-y-2 text-right pt-2" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+        {/* Payment Method */}
+        <div className="space-y-2 pt-2">
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
             {t("paymentMethod")}
           </label>
@@ -147,7 +138,7 @@ export default function OrderSummary() {
         <Separator />
 
         {/* Calculations */}
-        <div className="space-y-3" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+        <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">
               {t("subtotal")} ({itemCount} {itemCount === 1 ? t("itemCount") : t("itemsCount")})
@@ -168,41 +159,20 @@ export default function OrderSummary() {
             </div>
           )}
 
-          <div className="flex justify-between text-sm gap-3">
-            <span className="text-muted-foreground shrink-0">
-              {t("packaging")}
-            </span>
-            <span className="font-medium text-end">
-              {deliveryType !== "in_person" && pincodeStatus !== "valid" ? (
-                <span className="text-xs text-muted-foreground">{t("shippingPending")}</span>
-              ) : packagingCharge === 0 ? (
-                <Badge variant="secondary" className="text-xs">
-                  {t("free")}
-                </Badge>
-              ) : (
-                `₹${packagingCharge.toFixed(2)}`
-              )}
-            </span>
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed">
+            <p>{t("shippingCallNotice")}</p>
           </div>
-          {deliveryType !== "in_person" && pincodeStatus === "valid" && (
-            <p className="text-[10px] text-muted-foreground text-end leading-snug">
-              {shippingDescription}
-            </p>
-          )}
 
           <Separator />
 
           <div className="flex justify-between">
             <span className="text-lg font-semibold">{t("total")}</span>
-            <span className="text-lg font-bold text-primary">
-              ₹{total.toFixed(2)}
-            </span>
+            <span className="text-lg font-bold text-primary">₹{total.toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Dynamic Warning Alert */}
         {subtotal < 5000 && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 text-right leading-relaxed" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 leading-relaxed">
             <p>
               {isRtl
                 ? `ڈسکاؤنٹ حاصل کرنے کے لیے مزید ₹${(5000 - subtotal).toFixed(2)} کا سامان کارٹ میں شامل کریں!`
@@ -222,17 +192,17 @@ export default function OrderSummary() {
           </Link>
         </Button>
 
-        <div className="space-y-3 pt-4 border-t border-border" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+        <div className="space-y-3 pt-4 border-t border-border">
           <div className={`flex items-center gap-3 text-sm text-muted-foreground ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
-            <Shield className="h-4 w-4 text-green-500" />
+            <Shield className="h-4 w-4 text-green-500 shrink-0" />
             <span>{t("secureSsl")}</span>
           </div>
           <div className={`flex items-center gap-3 text-sm text-muted-foreground ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
-            <Truck className="h-4 w-4 text-blue-500" />
+            <Truck className="h-4 w-4 text-blue-500 shrink-0" />
             <span>{t("freeReturns")}</span>
           </div>
           <div className={`flex items-center gap-3 text-sm text-muted-foreground ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
-            <Heart className="h-4 w-4 text-red-500" />
+            <Heart className="h-4 w-4 text-red-500 shrink-0" />
             <span>{t("support")}</span>
           </div>
         </div>

@@ -29,8 +29,8 @@ export default function PincodeField({
   const { t, isRtl } = useLanguage();
 
   return (
-    <div className="space-y-1.5" style={{ direction: isRtl ? "rtl" : "ltr" }}>
-      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
+    <div className="space-y-1.5 text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
         {t("zipCode")}
         {required ? " *" : ""}
       </label>
@@ -58,10 +58,10 @@ export default function PincodeField({
         </div>
       </div>
 
-      {error && <p className="text-xs text-destructive text-start">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
 
       {status === "valid" && state && (
-        <p className="text-xs text-emerald-700 flex items-start gap-1.5 text-start">
+        <p className="text-xs text-emerald-700 flex items-start gap-1.5">
           <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>
             {district ? `${district}, ` : ""}
@@ -77,11 +77,11 @@ export default function PincodeField({
       )}
 
       {status === "invalid" && !error && (
-        <p className="text-xs text-destructive text-start">{t("invalidPincode")}</p>
+        <p className="text-xs text-destructive">{t("invalidPincode")}</p>
       )}
 
       {status === "idle" && value.length > 0 && value.length < 6 && (
-        <p className="text-xs text-muted-foreground text-start">{t("pincodeHint")}</p>
+        <p className="text-xs text-muted-foreground">{t("pincodeHint")}</p>
       )}
     </div>
   );

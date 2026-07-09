@@ -37,7 +37,7 @@ export default function CartItem({ item, isLast }: CartItemProps) {
 
         <div className="flex-1 min-w-0">
           <div className={`flex items-start justify-between ${isRtl ? "flex-row-reverse" : ""}`}>
-            <div className={`flex-1 min-w-0 ${isRtl ? "pl-4 text-right" : "pr-4 text-left"}`} style={{ direction: isRtl ? "rtl" : "ltr" }}>
+            <div className={`flex-1 min-w-0 ${isRtl ? "pl-4" : "pr-4"} text-start`} style={{ direction: isRtl ? "rtl" : "ltr" }}>
               <h2 className="font-semibold text-foreground line-clamp-2">
                 {item.name}
               </h2>

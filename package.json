@@ -10,7 +10,8 @@
     "generate-catalog": "node scripts/generate-catalog.mjs",
     "seed-books": "node scripts/seed-supabase.mjs",
     "update-cost-prices": "node scripts/update-cost-prices.mjs",
-    "supabase:deploy": "node scripts/supabase-deploy.mjs"
+    "supabase:deploy": "node scripts/supabase-deploy.mjs",
+    "migrate:call-charges": "node scripts/migrate-call-charges.mjs"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.2.6",
@@ -33,6 +34,7 @@
     "@serwist/turbopack": "^9.5.11",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^25.0.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "esbuild": "^0.28.1",

@@ -24,18 +24,15 @@ export default function Cart() {
       {/* Bilingual Discount Banner */}
       <div className="mb-6 p-4 bg-gradient-to-r from-primary/10 via-secondary to-primary/10 border border-primary/20 rounded-xl flex items-start gap-3 shadow-sm">
         <Gift className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
-        <div className="space-y-1 text-sm text-foreground">
-          <p className="font-semibold text-primary">
+        <div className="space-y-1 text-sm text-foreground text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+          <p className="font-semibold text-primary leading-relaxed">
             {t("discountBanner")}
-          </p>
-          <p className="font-medium text-muted-foreground leading-relaxed text-right font-sans" style={{ direction: "rtl" }}>
-            🎉 خصوصی پیشکش: اگر آپ ₹5,000 یا اس سے زیادہ کی خریداری کرتے ہیں، تو بینک ادائیگی پر %10 اور کیش پر %15 کی رعایت حاصل کریں!
           </p>
         </div>
       </div>
 
       <div className={`flex flex-col md:flex-row items-center justify-between mb-8 gap-4 ${isRtl ? "md:flex-row-reverse" : ""}`}>
-        <div className={isRtl ? "text-right" : "text-left"}>
+        <div className="text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
           <h1 className="text-3xl font-bold text-foreground">{t("cart")}</h1>
           <p className="text-muted-foreground mt-2">
             {itemCount} {itemCount === 1 ? t("itemCount") : t("itemsCount")}

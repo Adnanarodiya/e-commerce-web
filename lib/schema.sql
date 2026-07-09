@@ -28,12 +28,17 @@ CREATE TABLE IF NOT EXISTS orders (
   subtotal NUMERIC NOT NULL,
   discount NUMERIC NOT NULL DEFAULT 0,
   packaging_charge NUMERIC NOT NULL DEFAULT 0,
+  courier_charge NUMERIC NOT NULL DEFAULT 0,
   total NUMERIC NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'ready_to_pack' | 'packed'
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'ready_to_pack' | 'packed' | 'cancelled'
   payment_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
   packed_at TIMESTAMP WITH TIME ZONE,
   pickup_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
   pickup_confirmed_at TIMESTAMP WITH TIME ZONE,
+  admin_notes TEXT,
+  confirmed_at TIMESTAMP WITH TIME ZONE,
+  cancelled_at TIMESTAMP WITH TIME ZONE,
+  cancel_reason TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 

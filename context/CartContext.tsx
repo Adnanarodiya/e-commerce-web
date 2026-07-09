@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { normalizePincode } from "@/lib/pincode";
-import { calculateShippingCharge, shippingRateDescription } from "@/lib/shipping";
+import { shippingRateDescription } from "@/lib/shipping";
 
 export type DeliveryType = "courier" | "post" | "in_person";
 export type PaymentType = "cash" | "bank";
@@ -197,11 +197,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         ? pincodeInfo.isGujarat
         : null;
 
-  const packagingCharge = calculateShippingCharge(
-    deliveryType,
-    totalWeightGrams,
-    isGujaratForShipping
-  );
+  // Shipping/packaging is confirmed by phone call — not charged at checkout
+  const packagingCharge = 0;
 
   const shippingDescription = shippingRateDescription(
     deliveryType,
@@ -221,7 +218,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const discount = quranDiscount + percentageDiscount;
-  const total = Math.max(0, subtotal - discount + packagingCharge);
+  const total = Math.max(0, subtotal - discount);
 
   return (
     <CartContext.Provider

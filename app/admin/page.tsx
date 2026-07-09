@@ -15,13 +15,16 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   TrendingUp, BarChart3, BookOpen,
-  Settings, Layers, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, HandCoins
+  Settings, Layers, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, HandCoins, MessageCircle
 } from "lucide-react";
 import Image from "next/image";
-import { downloadInvoicePdf } from "@/lib/pdf-download";
+import { downloadInvoicePdf, downloadOrderConfirmationPdf } from "@/lib/pdf-download";
+import { buildOrderConfirmationData } from "@/lib/order-confirmation";
+import { openWhatsAppChat, formatOrderWhatsAppMessage } from "@/lib/whatsapp";
 import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
 import { stockValuation, sumGrossProfit, unitMargin, formatRupee } from "@/lib/profit";
 import MobileSheet from "@/components/ui/MobileSheet";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import StockAlertCards from "@/components/admin/StockAlertCards";
 import StockManagementPanel from "@/components/admin/StockManagementPanel";
 
@@ -66,12 +69,17 @@ interface Order {
   subtotal: number;
   discount: number;
   packaging_charge: number;
+  courier_charge?: number;
   total: number;
-  status: string; // 'pending' | 'ready_to_pack' | 'packed'
+  status: string;
   payment_confirmed: boolean;
   packed_at?: string | null;
   pickup_confirmed?: boolean;
   pickup_confirmed_at?: string | null;
+  admin_notes?: string | null;
+  confirmed_at?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
   created_at: string;
   items: OrderItem[];
 }
@@ -94,8 +102,21 @@ export default function AdminDashboard() {
   const [statementRange, setStatementRange] = useState<"today" | "week" | "month" | "year" | "all">("today");
   const [statementMode, setStatementMode] = useState<"bank" | "cash">("bank");
 
-  // Call simulation modal state
+  // Call confirmation modal state
   const [callModal, setCallModal] = useState<Order | null>(null);
+  const [chargePackaging, setChargePackaging] = useState("0");
+  const [chargeCourier, setChargeCourier] = useState("0");
+  const [chargeNotes, setChargeNotes] = useState("");
+  const [confirmingOrder, setConfirmingOrder] = useState(false);
+
+  // Cancel order modal
+  const [cancelModal, setCancelModal] = useState<Order | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+
+  // WhatsApp send prompt after order confirm
+  const [whatsappPromptOrder, setWhatsappPromptOrder] = useState<Order | null>(null);
+  const [sharingWhatsApp, setSharingWhatsApp] = useState(false);
 
   // QR Code edit state
   const [tempUpiSettings, setTempUpiSettings] = useState({ ...upiSettings });
@@ -105,6 +126,8 @@ export default function AdminDashboard() {
   const [uploadingQr, setUploadingQr] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [confirmingPickupId, setConfirmingPickupId] = useState<string | null>(null);
+  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
+  const [runningMigration, setRunningMigration] = useState(false);
 
   // CRUD book states
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -134,7 +157,8 @@ export default function AdminDashboard() {
         ...o,
         subtotal: Number(o.subtotal),
         discount: Number(o.discount),
-        packaging_charge: Number(o.packaging_charge),
+        packaging_charge: Number(o.packaging_charge ?? 0),
+        courier_charge: Number(o.courier_charge ?? 0),
         total: Number(o.total)
       })));
 
@@ -224,11 +248,11 @@ export default function AdminDashboard() {
 
   const filteredOrders = getFilteredOrders();
   const bankEarnings = filteredOrders
-    .filter(o => o.payment_type === "bank" && o.status !== "pending")
+    .filter(o => o.payment_type === "bank" && o.status !== "pending" && o.status !== "cancelled")
     .reduce((sum, o) => sum + o.total, 0);
 
   const cashEarnings = filteredOrders
-    .filter(o => o.payment_type === "cash" && o.status !== "pending")
+    .filter(o => o.payment_type === "cash" && o.status !== "pending" && o.status !== "cancelled")
     .reduce((sum, o) => sum + o.total, 0);
 
   const totalEarnings = bankEarnings + cashEarnings;
@@ -237,21 +261,150 @@ export default function AdminDashboard() {
     totalEarnings > 0 ? Math.round((periodGrossProfit / totalEarnings) * 100) : 0;
 
   // Actions
+  const getQuranMap = () => {
+    const isQuranById = new Map<number, boolean>();
+    books.forEach((b) => isQuranById.set(b.id, b.is_quran ?? false));
+    return isQuranById;
+  };
+
+  const buildConfirmation = (order: Order) =>
+    buildOrderConfirmationData(order, getQuranMap(), upiSettings);
+
   const handleReadyToPackClick = (order: Order) => {
+    setChargePackaging("0");
+    setChargeCourier("0");
+    setChargeNotes("");
     setCallModal(order);
+  };
+
+  const callModalProductsTotal = callModal
+    ? Math.max(0, callModal.subtotal - callModal.discount)
+    : 0;
+  const callModalFinalTotal =
+    callModalProductsTotal +
+    Math.max(0, parseFloat(chargePackaging) || 0) +
+    Math.max(0, parseFloat(chargeCourier) || 0);
+
+  const shareOrderOnWhatsApp = async (order: Order) => {
+    const data = buildConfirmation(order);
+    const message = formatOrderWhatsAppMessage(data);
+
+    // Open wa.me with customer phone from order + pre-filled message
+    openWhatsAppChat(order.customer_phone, message);
+
+    // Download bill PDF so admin can attach in WhatsApp chat
+    try {
+      await downloadOrderConfirmationPdf(data);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      setToast({ message: "WhatsApp opened — PDF download failed, try Download button", visible: true });
+    }
   };
 
   const confirmReadyToPack = async () => {
     if (!callModal) return;
+    const packaging = Math.max(0, parseFloat(chargePackaging) || 0);
+    const courier = Math.max(0, parseFloat(chargeCourier) || 0);
+    const productsTotal = Math.max(0, callModal.subtotal - callModal.discount);
+    const finalTotal = productsTotal + packaging + courier;
+
+    setConfirmingOrder(true);
     try {
-      const success = await db.updateOrderStatus(callModal.id, "ready_to_pack");
+      const success = await db.confirmOrderWithCharges(callModal.id, {
+        packaging_charge: packaging,
+        courier_charge: courier,
+        total: finalTotal,
+        admin_notes: chargeNotes.trim() || undefined,
+      });
       if (success) {
-        setOrders(prev => prev.map(o => o.id === callModal.id ? { ...o, status: "ready_to_pack" } : o));
+        const updated: Order = {
+          ...callModal,
+          packaging_charge: packaging,
+          courier_charge: courier,
+          total: finalTotal,
+          admin_notes: chargeNotes.trim() || null,
+          status: "ready_to_pack",
+          confirmed_at: new Date().toISOString(),
+        };
+        setOrders((prev) =>
+          prev.map((o) => (o.id === callModal.id ? updated : o))
+        );
+        setToast({
+          message: `Order ${callModal.id} confirmed — ready to pack`,
+          visible: true,
+        });
+        setCallModal(null);
+        setWhatsappPromptOrder(updated);
+      } else {
+        setToast({ message: "Failed to confirm order", visible: true });
       }
     } catch (err) {
       console.error(err);
+      setToast({ message: "Failed to confirm order", visible: true });
     } finally {
-      setCallModal(null);
+      setConfirmingOrder(false);
+    }
+  };
+
+  const handleWhatsAppPromptConfirm = async () => {
+    if (!whatsappPromptOrder) return;
+    const order = whatsappPromptOrder;
+    const data = buildConfirmation(order);
+    const message = formatOrderWhatsAppMessage(data);
+
+    setSharingWhatsApp(true);
+    setWhatsappPromptOrder(null);
+
+    // Open wa.me first (uses phone from order address)
+    openWhatsAppChat(order.customer_phone, message);
+
+    try {
+      await downloadOrderConfirmationPdf(data);
+      setToast({
+        message: `WhatsApp opened for ${order.customer_phone} — attach the downloaded PDF`,
+        visible: true,
+      });
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      setToast({
+        message: "WhatsApp opened — use Download button if PDF did not save",
+        visible: true,
+      });
+    } finally {
+      setSharingWhatsApp(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!cancelModal) return;
+    setCancellingOrder(true);
+    try {
+      const success = await db.cancelOrder(cancelModal.id, cancelReason.trim() || undefined);
+      if (success) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === cancelModal.id
+              ? {
+                  ...o,
+                  status: "cancelled",
+                  cancelled_at: new Date().toISOString(),
+                  cancel_reason: cancelReason.trim() || null,
+                }
+              : o
+          )
+        );
+        setToast({ message: `Order ${cancelModal.id} cancelled`, visible: true });
+        await loadData();
+        setCancelModal(null);
+        setCancelReason("");
+      } else {
+        setToast({ message: "Failed to cancel order", visible: true });
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Failed to cancel order", visible: true });
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -270,6 +423,25 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err);
       setToast({ message: "Failed to update stock", visible: true });
+    }
+  };
+
+  const handleRunMigration = async () => {
+    setRunningMigration(true);
+    setMigrationStatus(null);
+    try {
+      const res = await fetch("/api/admin/migrate-call-charges", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setMigrationStatus(data.message ?? "Migration applied");
+        setToast({ message: data.message ?? "Database migration applied", visible: true });
+      } else {
+        setMigrationStatus(data.error ?? "Migration failed");
+      }
+    } catch (err) {
+      setMigrationStatus(err instanceof Error ? err.message : "Migration failed");
+    } finally {
+      setRunningMigration(false);
     }
   };
 
@@ -400,48 +572,12 @@ export default function AdminDashboard() {
 
   const handleDownloadBill = async (order: Order) => {
     try {
-      // Re-enrich order_items with is_quran flag from the loaded books catalog
-      const isQuranById = new Map<number, boolean>();
-      books.forEach((b) => isQuranById.set(b.id, b.is_quran ?? false));
-
-      // Re-derive Quran / percentage discount breakdown from order totals
-      const quranSubtotal = order.items
-        .filter((it) => isQuranById.get(it.book_id) ?? false)
-        .reduce((sum, it) => sum + it.price * it.quantity, 0);
-      const nonQuranSubtotal = order.subtotal - quranSubtotal;
-      const quranQty = order.items
-        .filter((it) => isQuranById.get(it.book_id) ?? false)
-        .reduce((sum, it) => sum + it.quantity, 0);
-      const quranDiscount = Math.min(quranSubtotal, quranQty * 25);
-
-      let percentageDiscount = 0;
-      if (order.subtotal >= 5000 && nonQuranSubtotal > 0) {
-        const rate = order.payment_type === "bank" ? 0.1 : 0.15;
-        percentageDiscount = nonQuranSubtotal * rate;
+      const data = buildConfirmation(order);
+      if (order.status === "ready_to_pack" || order.status === "packed") {
+        await downloadOrderConfirmationPdf(data);
+        return;
       }
-
-      await downloadInvoicePdf({
-        id: order.id,
-        customer_name: order.customer_name,
-        customer_email: order.customer_email,
-        customer_phone: order.customer_phone,
-        customer_address: order.customer_address,
-        delivery_type: order.delivery_type,
-        payment_type: order.payment_type,
-        subtotal: order.subtotal,
-        discount: order.discount,
-        quranDiscount,
-        percentageDiscount,
-        packaging_charge: order.packaging_charge,
-        total: order.total,
-        created_at: order.created_at,
-        items: order.items.map((it) => ({
-          ...it,
-          is_quran: isQuranById.get(it.book_id) ?? false,
-        })),
-        upi_id: upiSettings.upi_id,
-        payee_name: upiSettings.payee_name,
-      });
+      await downloadInvoicePdf(data);
     } catch (err) {
       console.error("Invoice generation failed:", err);
       alert("Could not generate invoice. See console for details.");
@@ -670,10 +806,10 @@ export default function AdminDashboard() {
                       {t("bankStatement")}
                     </h3>
                     <div className="border rounded-xl divide-y text-xs max-h-[300px] overflow-y-auto">
-                      {filteredOrders.filter(o => o.payment_type === "bank" && o.status !== "pending").length === 0 ? (
+                      {filteredOrders.filter(o => o.payment_type === "bank" && o.status !== "pending" && o.status !== "cancelled").length === 0 ? (
                         <p className="p-4 text-center text-muted-foreground">No bank statements</p>
                       ) : (
-                        filteredOrders.filter(o => o.payment_type === "bank" && o.status !== "pending").map((order, idx) => (
+                        filteredOrders.filter(o => o.payment_type === "bank" && o.status !== "pending" && o.status !== "cancelled").map((order, idx) => (
                           <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/30">
                             <div className="min-w-0">
                               <span className="font-bold text-slate-700 block">{order.id}</span>
@@ -694,10 +830,10 @@ export default function AdminDashboard() {
                       {t("cashStatement")}
                     </h3>
                     <div className="border rounded-xl divide-y text-xs max-h-[300px] overflow-y-auto">
-                      {filteredOrders.filter(o => o.payment_type === "cash" && o.status !== "pending").length === 0 ? (
+                      {filteredOrders.filter(o => o.payment_type === "cash" && o.status !== "pending" && o.status !== "cancelled").length === 0 ? (
                         <p className="p-4 text-center text-muted-foreground">No cash statements</p>
                       ) : (
-                        filteredOrders.filter(o => o.payment_type === "cash" && o.status !== "pending").map((order, idx) => (
+                        filteredOrders.filter(o => o.payment_type === "cash" && o.status !== "pending" && o.status !== "cancelled").map((order, idx) => (
                           <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/30">
                             <div>
                               <span className="font-bold text-slate-700 block">{order.id}</span>
@@ -775,25 +911,33 @@ export default function AdminDashboard() {
 
                         <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                           <div className="text-right text-xs">
-                            <span className="text-muted-foreground block">Total Amount</span>
-                            <span className="text-md font-bold text-primary">₹{order.total.toFixed(2)}</span>
+                            <span className="text-muted-foreground block">{t("productsTotal")}</span>
+                            <span className="text-md font-bold text-primary">
+                              ₹{Math.max(0, order.subtotal - order.discount).toFixed(2)}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block mt-0.5">
+                              + packaging & courier on call
+                            </span>
                           </div>
                           <div className="flex flex-col gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-9 text-xs"
-                              onClick={() => handleDownloadBill(order)}
+                              className="h-9 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => {
+                                setCancelReason("");
+                                setCancelModal(order);
+                              }}
                             >
-                              <Download className="h-3.5 w-3.5 mr-1" />
-                              Download Bill
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              {t("cancelOrder")}
                             </Button>
                             <Button
                               className="bg-primary hover:bg-primary/95 text-white font-bold"
                               onClick={() => handleReadyToPackClick(order)}
                             >
                               <PhoneCall className="h-4 w-4 mr-2" />
-                              Ready to Pack
+                              {t("confirmOrder")}
                             </Button>
                           </div>
                         </div>
@@ -814,12 +958,64 @@ export default function AdminDashboard() {
                   {orders
                     .filter((o) => o.status === "ready_to_pack")
                     .map((order) => (
-                      <div key={order.id} className="flex justify-between items-center border p-3 bg-orange-50/50">
+                      <div key={order.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border p-3 bg-orange-50/50 rounded-lg">
+                        <div className="space-y-1">
+                          <div>
+                            <span className="font-bold">{order.customer_name}</span>
+                            <span className="text-muted-foreground ml-2">{order.id}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            Products: ₹{Math.max(0, order.subtotal - order.discount).toFixed(2)}
+                            {" · "}Packaging: ₹{order.packaging_charge.toFixed(2)}
+                            {" · "}Courier: ₹{(order.courier_charge ?? 0).toFixed(2)}
+                            {" · "}<span className="font-semibold text-primary">Total: ₹{order.total.toFixed(2)}</span>
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() => handleDownloadBill(order)}
+                          >
+                            <Download className="h-3.5 w-3.5 mr-1" />
+                            {t("downloadConfirmation")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => shareOrderOnWhatsApp(order)}
+                          >
+                            <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                            {t("shareWhatsApp")}
+                          </Button>
+                          <Badge className="bg-orange-500 text-white">With Packer</Badge>
+                        </div>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {orders.filter((o) => o.status === "cancelled").length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-md font-bold text-red-700">{t("orderCancelled")}</CardTitle>
+                  <CardDescription>Cancelled orders — stock has been restored</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  {orders
+                    .filter((o) => o.status === "cancelled")
+                    .map((order) => (
+                      <div key={order.id} className="flex justify-between items-center border border-red-100 p-3 bg-red-50/40 rounded-lg">
                         <div>
                           <span className="font-bold">{order.customer_name}</span>
                           <span className="text-muted-foreground ml-2">{order.id}</span>
+                          {order.cancel_reason && (
+                            <p className="text-[11px] text-red-600 mt-1">Reason: {order.cancel_reason}</p>
+                          )}
                         </div>
-                        <Badge className="bg-orange-500 text-white">With Packer</Badge>
+                        <Badge variant="destructive">Cancelled</Badge>
                       </div>
                     ))}
                 </CardContent>
@@ -929,6 +1125,7 @@ export default function AdminDashboard() {
                     (o) =>
                       o.payment_type === (statementMode === "bank" ? "bank" : "cash") &&
                       o.status !== "pending" &&
+                      o.status !== "cancelled" &&
                       inRange(o.created_at)
                   )
                   .sort(
@@ -1152,6 +1349,28 @@ export default function AdminDashboard() {
                 <Check className="h-4 w-4 mr-2" />
                 Update Payment Settings
               </Button>
+
+              <Separator className="my-6" />
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-900">Database Migration</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Apply courier &amp; packaging charge columns to Supabase. Requires{" "}
+                  <code className="text-[10px] bg-muted px-1 rounded">SUPABASE_DB_PASSWORD</code> in .env.local.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleRunMigration}
+                  disabled={runningMigration}
+                  className="font-semibold"
+                >
+                  {runningMigration ? "Applying…" : "Apply Call-Charges Migration"}
+                </Button>
+                {migrationStatus && (
+                  <p className="text-xs text-slate-600">{migrationStatus}</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -1191,16 +1410,17 @@ export default function AdminDashboard() {
         }
         footer={
           callModal ? (
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 h-11 sm:h-10" onClick={() => setCallModal(null)}>
-                {t("cancel")}
-              </Button>
+            <div className="flex flex-col gap-2">
               <Button
-                className="flex-1 h-11 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                className="w-full h-11 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                 onClick={confirmReadyToPack}
+                disabled={confirmingOrder}
               >
                 <Check className="h-4 w-4 mr-2" />
-                Send to Packer
+                {confirmingOrder ? "Confirming…" : t("confirmAndReadyToPack")}
+              </Button>
+              <Button variant="outline" className="w-full h-11 sm:h-10" onClick={() => setCallModal(null)}>
+                {t("cancel")}
               </Button>
             </div>
           ) : null
@@ -1245,7 +1465,7 @@ export default function AdminDashboard() {
                       Cash on Delivery
                     </>
                   )}
-                  <span className="text-primary">· ₹{callModal.total.toFixed(2)}</span>
+                  <span className="text-primary">· ₹{Math.max(0, callModal.subtotal - callModal.discount).toFixed(2)} (books)</span>
                 </span>
               </div>
               <div className="flex justify-between items-center gap-3">
@@ -1272,10 +1492,151 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                Charges agreed on phone call
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">{t("packagingChargeLabel")}</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={chargePackaging}
+                    onChange={(e) => setChargePackaging(e.target.value)}
+                    className={adminFieldInput}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">{t("courierChargeLabel")}</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={chargeCourier}
+                    onChange={(e) => setChargeCourier(e.target.value)}
+                    className={adminFieldInput}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">{t("adminNotes")}</label>
+                <Textarea
+                  value={chargeNotes}
+                  onChange={(e) => setChargeNotes(e.target.value)}
+                  rows={2}
+                  className="rounded-xl border-slate-200 bg-slate-50 text-sm"
+                  placeholder="Payment received on call, delivery notes…"
+                />
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-emerald-200">
+                <span className="text-sm text-slate-600">{t("productsTotal")}</span>
+                <span className="text-sm font-bold">₹{callModalProductsTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-base font-bold text-slate-900">{t("finalTotal")}</span>
+                <span className="text-lg font-bold text-primary">₹{callModalFinalTotal.toFixed(2)}</span>
+              </div>
+            </div>
+
             <p className="text-sm text-slate-600 leading-relaxed">
-              Confirm order details, book quantities, courier type, and payment status with the customer.
-              Once verified, assign to the packer.
+              Confirm order details, quantities, delivery type, and collect packaging + courier payment on the call.
+              After confirming, you can send the bill on WhatsApp or download it later from the packer queue.
             </p>
+          </div>
+        ) : null}
+      </MobileSheet>
+
+      {/* WhatsApp send prompt — after Confirm & Ready to Pack */}
+      <ConfirmModal
+        open={!!whatsappPromptOrder}
+        title={t("whatsappSendTitle")}
+        description={
+          whatsappPromptOrder
+            ? t("whatsappSendPrompt")
+                .replace("{name}", whatsappPromptOrder.customer_name)
+                .replace("{phone}", whatsappPromptOrder.customer_phone)
+            : ""
+        }
+        confirmLabel={t("whatsappSendYes")}
+        cancelLabel={t("whatsappSendNo")}
+        onConfirm={handleWhatsAppPromptConfirm}
+        onCancel={() => setWhatsappPromptOrder(null)}
+        loading={sharingWhatsApp}
+        headerTone="green"
+        icon={<MessageCircle className="h-5 w-5 text-white" />}
+      >
+        {whatsappPromptOrder ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs space-y-1">
+            <p>
+              <span className="font-semibold text-slate-500">Order:</span>{" "}
+              {whatsappPromptOrder.id}
+            </p>
+            <p>
+              <span className="font-semibold text-slate-500">Total:</span>{" "}
+              ₹{whatsappPromptOrder.total.toFixed(2)}
+            </p>
+            <p className="text-slate-500 pt-1">
+              Opens <strong>wa.me</strong> with the customer&apos;s number. The bill PDF downloads so you can attach it in the chat.
+            </p>
+          </div>
+        ) : null}
+      </ConfirmModal>
+
+      {/* Cancel order modal */}
+      <MobileSheet
+        open={!!cancelModal}
+        onClose={() => setCancelModal(null)}
+        maxWidth="sm"
+        header={
+          cancelModal ? (
+            <div className="bg-red-600 px-4 pt-2 pb-4 sm:px-5 sm:pt-4 flex items-start justify-between gap-3 text-white shrink-0">
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold leading-tight">{t("cancelOrderTitle")}</h3>
+                <p className="text-sm text-white/85 mt-0.5">{cancelModal.id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCancelModal(null)}
+                className="p-1.5 rounded-full hover:bg-white/20 shrink-0"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5 text-white" />
+              </button>
+            </div>
+          ) : null
+        }
+        footer={
+          cancelModal ? (
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="destructive"
+                className="w-full h-11 sm:h-10 font-semibold"
+                onClick={handleCancelOrder}
+                disabled={cancellingOrder}
+              >
+                {cancellingOrder ? "Cancelling…" : t("cancelOrder")}
+              </Button>
+              <Button variant="outline" className="w-full h-11 sm:h-10" onClick={() => setCancelModal(null)}>
+                Go Back
+              </Button>
+            </div>
+          ) : null
+        }
+      >
+        {cancelModal ? (
+          <div className="px-4 py-4 sm:px-5 space-y-4">
+            <p className="text-sm text-slate-600">{t("cancelOrderPrompt")}</p>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-600">Reason (optional)</label>
+              <Textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={2}
+                className="rounded-xl border-slate-200 bg-slate-50 text-sm"
+              />
+            </div>
           </div>
         ) : null}
       </MobileSheet>

@@ -57,3 +57,27 @@ export async function openSlipPdfInNewTab(data: SlipData): Promise<void> {
   const { SlipDocument } = await import("@/components/pdf/SlipDocument");
   await openPdfInNewTab(<SlipDocument slip={data} />);
 }
+
+/** Download a colorful A4 order confirmation (with packaging + courier). */
+export async function downloadOrderConfirmationPdf(
+  data: import("@/lib/order-confirmation").OrderConfirmationData
+): Promise<void> {
+  const { default: OrderConfirmationDocument } = await import(
+    "@/components/pdf/OrderConfirmationDocument"
+  );
+  await downloadPdf(
+    <OrderConfirmationDocument data={data} />,
+    `order-confirmation-${data.id}.pdf`
+  );
+}
+
+/** Generate PDF blob for Web Share API. */
+export async function generateOrderConfirmationBlob(
+  data: import("@/lib/order-confirmation").OrderConfirmationData
+): Promise<Blob> {
+  const { pdf } = await import("@react-pdf/renderer");
+  const { default: OrderConfirmationDocument } = await import(
+    "@/components/pdf/OrderConfirmationDocument"
+  );
+  return pdf(<OrderConfirmationDocument data={data} />).toBlob();
+}
