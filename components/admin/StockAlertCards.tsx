@@ -80,7 +80,8 @@ function CompactStockRow({
           }
         />
         <Button
-          className={`h-11 shrink-0 px-4 text-sm font-semibold sm:h-9 sm:text-xs ${
+          size="sm"
+          className={`shrink-0 px-4 font-semibold ${
             isOut ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"
           } text-white`}
           onClick={() => onAddStock(book.id)}

@@ -14,6 +14,7 @@ import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order"
 import { db, supabase } from "@/lib/supabase";
 import { Check, LogOut, PackageCheck, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
+import { touchChoice } from "@/lib/touch-target";
 
 interface Order extends PackedOrder {
   customer_address: string;
@@ -200,14 +201,14 @@ export default function PackerDashboard() {
           </p>
         </div>
         <div className={`flex flex-wrap items-center gap-2 ${isRtl ? "sm:flex-row-reverse" : ""}`}>
-          <Button variant="outline" size="sm" onClick={loadData} className="text-xs h-8">
+          <Button variant="outline" size="sm" onClick={loadData} className="text-xs">
             Refresh
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleLogout}
-            className="flex items-center gap-1.5 text-destructive hover:text-destructive h-8 text-xs"
+            className="flex items-center gap-1.5 text-destructive hover:text-destructive text-xs"
           >
             <LogOut className="h-3.5 w-3.5" />
             {isRtl ? "لاگ آؤٹ" : "Logout"}
@@ -219,7 +220,7 @@ export default function PackerDashboard() {
         <button
           type="button"
           onClick={() => setActiveView("queue")}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
+          className={`flex-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${touchChoice} ${
             activeView === "queue"
               ? "border-primary text-foreground bg-slate-50"
               : "border-transparent text-muted-foreground"
@@ -230,7 +231,7 @@ export default function PackerDashboard() {
         <button
           type="button"
           onClick={() => setActiveView("packed")}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
+          className={`flex-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${touchChoice} ${
             activeView === "packed"
               ? "border-primary text-foreground bg-slate-50"
               : "border-transparent text-muted-foreground"
@@ -287,13 +288,13 @@ export default function PackerDashboard() {
                       ))}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => handlePrintSlip(order)}>
+                      <Button variant="outline" size="sm" className="text-xs" onClick={() => handlePrintSlip(order)}>
                         <Printer className="h-3.5 w-3.5 mr-1" />
                         {t("printSlip")}
                       </Button>
                       <Button
                         size="sm"
-                        className="h-9 text-xs bg-green-600 hover:bg-green-700 text-white"
+                        className="text-xs bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => setBoxPackTarget(order)}
                         disabled={packingId === order.id}
                       >

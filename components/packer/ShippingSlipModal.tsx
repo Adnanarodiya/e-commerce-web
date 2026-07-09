@@ -138,7 +138,7 @@ export default function ShippingSlipModal({
             <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-3">
               <Button
                 variant="outline"
-                className="w-full h-11 sm:h-10"
+                className="w-full"
                 onClick={onClose}
                 disabled={busy}
               >
@@ -146,7 +146,7 @@ export default function ShippingSlipModal({
               </Button>
               <Button
                 variant="outline"
-                className="w-full h-11 sm:h-10"
+                className="w-full"
                 onClick={handleDownload}
                 disabled={busy}
               >
@@ -154,7 +154,7 @@ export default function ShippingSlipModal({
                 Download
               </Button>
               <Button
-                className="w-full h-11 sm:h-10 bg-primary text-white"
+                className="w-full bg-primary text-white"
                 onClick={handlePrint}
                 disabled={busy}
               >

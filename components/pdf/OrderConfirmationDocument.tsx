@@ -9,6 +9,9 @@ import {
 } from "@react-pdf/renderer";
 import type { OrderConfirmationData } from "@/lib/order-confirmation";
 import { formatDeliveryType, formatMoneyPdf } from "@/lib/format-order";
+import { registerPdfFonts, PDF_FONT_LATIN, pdfFontForText } from "@/lib/pdf-fonts";
+
+registerPdfFonts();
 
 const ORANGE = "#c8941c";
 const SLATE_DARK = "#0f172a";
@@ -24,7 +27,7 @@ const styles = StyleSheet.create({
   page: {
     fontSize: 10,
     color: SLATE_DARK,
-    fontFamily: "Helvetica",
+    fontFamily: PDF_FONT_LATIN,
     padding: 36,
   },
   headerBand: {
@@ -155,7 +158,7 @@ export default function OrderConfirmationDocument({
         <View style={styles.headerBand}>
           <View>
             <Text style={styles.brandName}>Noorani Makatib</Text>
-            <Text style={styles.brandTag}>نورانی مکاتب — Order Confirmation</Text>
+            <Text style={styles.brandTag}>Noorani Makatib — Order Confirmation</Text>
           </View>
           <View>
             <Text style={styles.docTitle}>ORDER CONFIRMATION</Text>
@@ -172,8 +175,10 @@ export default function OrderConfirmationDocument({
 
         <View style={styles.twoCol}>
           <View style={{ width: "48%" }}>
-            <Text style={styles.label}>Customer / گاہک</Text>
-            <Text style={styles.valueBold}>{data.customer_name}</Text>
+            <Text style={styles.label}>Customer</Text>
+            <Text style={[styles.valueBold, { fontFamily: pdfFontForText(data.customer_name) }]}>
+              {data.customer_name}
+            </Text>
             <Text style={styles.valueText}>{data.customer_phone}</Text>
             <Text style={styles.valueText}>{data.customer_email}</Text>
           </View>
@@ -199,7 +204,7 @@ export default function OrderConfirmationDocument({
         <View style={styles.divider} />
 
         <View style={styles.tableHeader}>
-          <Text style={[styles.th, styles.colItem]}>Book / کتاب</Text>
+          <Text style={[styles.th, styles.colItem]}>Book</Text>
           <Text style={[styles.th, styles.colQty]}>Qty</Text>
           <Text style={[styles.th, styles.colPrice]}>Price</Text>
           <Text style={[styles.th, styles.colTotal]}>Total</Text>
@@ -210,7 +215,9 @@ export default function OrderConfirmationDocument({
             key={`${item.book_name}-${idx}`}
             style={[styles.row, idx % 2 === 1 ? styles.rowAlt : {}]}
           >
-            <Text style={[styles.valueText, styles.colItem]}>{item.book_name}</Text>
+            <Text style={[styles.valueText, styles.colItem, { fontFamily: pdfFontForText(item.book_name) }]}>
+              {item.book_name}
+            </Text>
             <Text style={[styles.valueText, styles.colQty]}>{item.quantity}</Text>
             <Text style={[styles.valueText, styles.colPrice]}>{money(item.price)}</Text>
             <Text style={[styles.valueBold, styles.colTotal]}>
@@ -221,7 +228,7 @@ export default function OrderConfirmationDocument({
 
         <View style={styles.totalsBox}>
           <View style={styles.totalRow}>
-            <Text style={styles.valueText}>Subtotal / ذیلی رقم</Text>
+            <Text style={styles.valueText}>Subtotal</Text>
             <Text style={styles.valueBold}>{money(data.subtotal)}</Text>
           </View>
           {quranDisc > 0 && (
@@ -245,19 +252,19 @@ export default function OrderConfirmationDocument({
             </View>
           )}
           <View style={styles.totalRow}>
-            <Text style={styles.valueText}>Products total / مصنوعات</Text>
+            <Text style={styles.valueText}>Products total</Text>
             <Text style={styles.valueBold}>{money(data.productsTotal)}</Text>
           </View>
           <View style={styles.totalRow}>
-            <Text style={styles.valueText}>Packaging / پیکجنگ</Text>
+            <Text style={styles.valueText}>Packaging</Text>
             <Text style={styles.valueBold}>{money(data.packaging_charge)}</Text>
           </View>
           <View style={styles.totalRow}>
-            <Text style={styles.valueText}>Courier / کورئیر</Text>
+            <Text style={styles.valueText}>Courier</Text>
             <Text style={styles.valueBold}>{money(data.courier_charge)}</Text>
           </View>
           <View style={styles.totalGrand}>
-            <Text style={styles.totalGrandLabel}>Grand Total / کل رقم</Text>
+            <Text style={styles.totalGrandLabel}>Grand Total</Text>
             <Text style={styles.totalGrandValue}>{money(data.total)}</Text>
           </View>
         </View>
@@ -265,7 +272,9 @@ export default function OrderConfirmationDocument({
         {data.admin_notes ? (
           <View style={{ marginTop: 12 }}>
             <Text style={styles.label}>Notes</Text>
-            <Text style={styles.valueText}>{data.admin_notes}</Text>
+            <Text style={[styles.valueText, { fontFamily: pdfFontForText(data.admin_notes) }]}>
+              {data.admin_notes}
+            </Text>
           </View>
         ) : null}
 

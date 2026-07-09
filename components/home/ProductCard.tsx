@@ -112,7 +112,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <Button
           size="sm"
           className={cn(
-            "w-full transition-all duration-200 h-8 sm:h-10 text-[10px] sm:text-sm px-2",
+            "w-full transition-all duration-200 text-[10px] sm:text-sm px-2",
             isOutOfStock
               ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted"
               : justAdded

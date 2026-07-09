@@ -375,14 +375,14 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             </View>
           )}
           <View style={styles.totalRow}>
-            <Text style={styles.valueText}>Packaging / پیکجنگ</Text>
+            <Text style={styles.valueText}>Packaging</Text>
             <Text style={styles.valueBold}>
               {data.packaging_charge > 0 ? money(data.packaging_charge) : "On call"}
             </Text>
           </View>
           {(data.courier_charge ?? 0) > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.valueText}>Courier / کورئیر</Text>
+              <Text style={styles.valueText}>Courier</Text>
               <Text style={styles.valueBold}>{money(data.courier_charge ?? 0)}</Text>
             </View>
           )}

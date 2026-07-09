@@ -27,6 +27,7 @@ import MobileSheet from "@/components/ui/MobileSheet";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import StockAlertCards from "@/components/admin/StockAlertCards";
 import StockManagementPanel from "@/components/admin/StockManagementPanel";
+import { touchChoice } from "@/lib/touch-target";
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -619,15 +620,15 @@ export default function AdminDashboard() {
             <p className="text-slate-400 text-xs mt-0.5">Noorani Makatib — stock, orders & payments</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={loadData} className="h-8 text-xs bg-transparent border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white">
+            <Button variant="outline" size="sm" onClick={loadData} className="text-xs bg-transparent border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white">
               <RotateCw className="h-3.5 w-3.5" />
               Reload
             </Button>
-            <Button size="sm" onClick={handleOpenAddBook} className="h-8 text-xs bg-primary text-primary-foreground">
+            <Button size="sm" onClick={handleOpenAddBook} className="text-xs bg-primary text-primary-foreground">
               <Plus className="h-3.5 w-3.5" />
               {t("addBook")}
             </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout} className="h-8 text-xs bg-transparent border-slate-600 text-red-300 hover:bg-slate-800 hover:text-red-200">
+            <Button variant="outline" size="sm" onClick={handleLogout} className="text-xs bg-transparent border-slate-600 text-red-300 hover:bg-slate-800 hover:text-red-200">
               <LogOut className="h-3.5 w-3.5" />
               Logout
             </Button>
@@ -643,7 +644,7 @@ export default function AdminDashboard() {
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-2.5 px-4 py-3 text-left text-xs sm:text-sm font-semibold border-b md:border-b-0 md:border-l-[3px] border-border last:border-b-0 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-2.5 px-4 text-left text-xs sm:text-sm font-semibold border-b md:border-b-0 md:border-l-[3px] border-border last:border-b-0 transition-colors whitespace-nowrap ${touchChoice} ${
                   activeTab === id
                     ? "bg-primary/10 text-primary md:border-l-primary border-l-transparent"
                     : "text-muted-foreground hover:bg-slate-50 hover:text-foreground md:border-l-transparent"
@@ -923,7 +924,7 @@ export default function AdminDashboard() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-9 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                              className="w-full text-xs text-red-600 border-red-200 hover:bg-red-50"
                               onClick={() => {
                                 setCancelReason("");
                                 setCancelModal(order);
@@ -933,7 +934,7 @@ export default function AdminDashboard() {
                               {t("cancelOrder")}
                             </Button>
                             <Button
-                              className="bg-primary hover:bg-primary/95 text-white font-bold"
+                              className="w-full bg-primary hover:bg-primary/95 text-white font-bold"
                               onClick={() => handleReadyToPackClick(order)}
                             >
                               <PhoneCall className="h-4 w-4 mr-2" />
@@ -975,7 +976,7 @@ export default function AdminDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 text-xs"
+                            className="w-full text-xs"
                             onClick={() => handleDownloadBill(order)}
                           >
                             <Download className="h-3.5 w-3.5 mr-1" />
@@ -983,7 +984,7 @@ export default function AdminDashboard() {
                           </Button>
                           <Button
                             size="sm"
-                            className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                            className="w-full text-xs bg-green-600 hover:bg-green-700 text-white"
                             onClick={() => shareOrderOnWhatsApp(order)}
                           >
                             <MessageCircle className="h-3.5 w-3.5 mr-1" />
@@ -1078,7 +1079,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setStatementMode("bank")}
-                  className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-2 ${
+                  className={`flex-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-2 ${touchChoice} ${
                     statementMode === "bank"
                       ? "border-blue-600 text-blue-700 bg-blue-50"
                       : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1090,7 +1091,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setStatementMode("cash")}
-                  className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-2 ${
+                  className={`flex-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-2 ${touchChoice} ${
                     statementMode === "cash"
                       ? "border-green-600 text-green-700 bg-green-50"
                       : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1259,11 +1260,11 @@ export default function AdminDashboard() {
                       <Separator className="my-3" />
                       
                       <div className="flex gap-2 justify-end text-xs">
-                        <Button size="sm" variant="outline" className="h-8 px-2.5 text-blue-600 hover:text-blue-700" onClick={() => handleOpenEditBook(book)}>
+                        <Button size="sm" variant="outline" className="px-2.5 text-blue-600 hover:text-blue-700" onClick={() => handleOpenEditBook(book)}>
                           <Edit2 className="h-3.5 w-3.5 mr-1" />
                           Edit
                         </Button>
-                        <Button size="sm" variant="outline" className="h-8 px-2.5 text-destructive hover:text-destructive/80" onClick={() => handleDeleteBook(book.id)}>
+                        <Button size="sm" variant="outline" className="px-2.5 text-destructive hover:text-destructive/80" onClick={() => handleDeleteBook(book.id)}>
                           <Trash2 className="h-3.5 w-3.5 mr-1" />
                           Delete
                         </Button>
@@ -1412,14 +1413,15 @@ export default function AdminDashboard() {
           callModal ? (
             <div className="flex flex-col gap-2">
               <Button
-                className="w-full h-11 sm:h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                size="lg"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={confirmReadyToPack}
                 disabled={confirmingOrder}
               >
                 <Check className="h-4 w-4 mr-2" />
                 {confirmingOrder ? "Confirming…" : t("confirmAndReadyToPack")}
               </Button>
-              <Button variant="outline" className="w-full h-11 sm:h-10" onClick={() => setCallModal(null)}>
+              <Button variant="outline" size="lg" className="w-full" onClick={() => setCallModal(null)}>
                 {t("cancel")}
               </Button>
             </div>
@@ -1612,13 +1614,14 @@ export default function AdminDashboard() {
             <div className="flex flex-col gap-2">
               <Button
                 variant="destructive"
-                className="w-full h-11 sm:h-10 font-semibold"
+                size="lg"
+                className="w-full"
                 onClick={handleCancelOrder}
                 disabled={cancellingOrder}
               >
                 {cancellingOrder ? "Cancelling…" : t("cancelOrder")}
               </Button>
-              <Button variant="outline" className="w-full h-11 sm:h-10" onClick={() => setCancelModal(null)}>
+              <Button variant="outline" size="lg" className="w-full" onClick={() => setCancelModal(null)}>
                 Go Back
               </Button>
             </div>
@@ -1652,12 +1655,13 @@ export default function AdminDashboard() {
             <Button
               type="button"
               variant="outline"
-              className="flex-1 h-11 sm:h-10"
+              size="lg"
+              className="flex-1"
               onClick={() => setIsBookModalOpen(false)}
             >
               Cancel
             </Button>
-            <Button type="submit" form="admin-book-form" className="flex-1 h-11 sm:h-10 bg-primary text-white font-bold">
+            <Button type="submit" form="admin-book-form" size="lg" className="flex-1 bg-primary text-white">
               Save Book
             </Button>
           </div>

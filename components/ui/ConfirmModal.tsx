@@ -86,14 +86,16 @@ export default function ConfirmModal({
         <div className="flex gap-3">
           <Button
             variant="outline"
-            className="flex-1 h-11 sm:h-10"
+            size="lg"
+            className="flex-1"
             onClick={onCancel}
             disabled={loading}
           >
             {cancelLabel}
           </Button>
           <Button
-            className={`flex-1 h-11 sm:h-10 font-semibold ${confirmToneClass[headerTone]}`}
+            size="lg"
+            className={`flex-1 ${confirmToneClass[headerTone]}`}
             onClick={onConfirm}
             disabled={loading}
           >

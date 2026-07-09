@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { CreditCard, Heart, Shield, Truck, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
 import PincodeField from "@/components/checkout/PincodeField";
+import { touchChoice } from "@/lib/touch-target";
 
 export default function OrderSummary() {
   const {
@@ -49,7 +50,7 @@ export default function OrderSummary() {
             <button
               type="button"
               onClick={() => setDeliveryType("courier")}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 text-center text-xs font-semibold gap-1 transition-all ${
+              className={`flex flex-col items-center justify-center rounded-lg border-2 text-center text-xs font-semibold gap-1 transition-all ${touchChoice} p-2 sm:p-2 ${
                 deliveryType === "courier"
                   ? "border-primary bg-primary/5 text-primary"
                   : "border-border hover:border-gray-300 text-muted-foreground bg-background"
@@ -61,7 +62,7 @@ export default function OrderSummary() {
             <button
               type="button"
               onClick={() => setDeliveryType("post")}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 text-center text-xs font-semibold gap-1 transition-all ${
+              className={`flex flex-col items-center justify-center rounded-lg border-2 text-center text-xs font-semibold gap-1 transition-all ${touchChoice} p-2 sm:p-2 ${
                 deliveryType === "post"
                   ? "border-primary bg-primary/5 text-primary"
                   : "border-border hover:border-gray-300 text-muted-foreground bg-background"
@@ -73,7 +74,7 @@ export default function OrderSummary() {
             <button
               type="button"
               onClick={() => setDeliveryType("in_person")}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 text-center text-xs font-semibold gap-1 transition-all ${
+              className={`flex flex-col items-center justify-center rounded-lg border-2 text-center text-xs font-semibold gap-1 transition-all ${touchChoice} p-2 sm:p-2 ${
                 deliveryType === "in_person"
                   ? "border-primary bg-primary/5 text-primary"
                   : "border-border hover:border-gray-300 text-muted-foreground bg-background"
@@ -113,7 +114,7 @@ export default function OrderSummary() {
             <button
               type="button"
               onClick={() => setPaymentType("cash")}
-              className={`py-2 px-3 rounded-lg border-2 text-center text-xs font-semibold transition-all ${
+              className={`rounded-lg border-2 text-center text-xs font-semibold transition-all ${touchChoice} px-3 ${
                 paymentType === "cash"
                   ? "border-primary bg-primary/5 text-primary"
                   : "border-border hover:border-gray-300 text-muted-foreground bg-background"
@@ -124,7 +125,7 @@ export default function OrderSummary() {
             <button
               type="button"
               onClick={() => setPaymentType("bank")}
-              className={`py-2 px-3 rounded-lg border-2 text-center text-xs font-semibold transition-all ${
+              className={`rounded-lg border-2 text-center text-xs font-semibold transition-all ${touchChoice} px-3 ${
                 paymentType === "bank"
                   ? "border-primary bg-primary/5 text-primary"
                   : "border-border hover:border-gray-300 text-muted-foreground bg-background"

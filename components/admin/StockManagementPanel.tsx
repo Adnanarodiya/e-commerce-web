@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Edit2, Package, PackageX, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
 import type { StockBook } from "@/components/admin/StockAlertCards";
+import { touchChoice } from "@/lib/touch-target";
 
 interface StockManagementPanelProps {
   books: StockBook[];
@@ -99,7 +100,7 @@ function StockItemCard({
         <Button
           size="sm"
           variant="ghost"
-          className="h-9 shrink-0 text-slate-600 -mr-1"
+          className="shrink-0 text-slate-600 -mr-1"
           onClick={() => onEditBook(book)}
           aria-label={`Edit ${book.name_en}`}
         >
@@ -120,7 +121,8 @@ function StockItemCard({
           }
         />
         <Button
-          className="h-11 shrink-0 bg-primary text-primary-foreground font-semibold px-4 md:h-9"
+          size="sm"
+          className="shrink-0 bg-primary text-primary-foreground font-semibold px-4"
           onClick={() => onAddStock(book.id)}
         >
           <Plus className="h-4 w-4 mr-1" />
@@ -156,7 +158,7 @@ export default function StockManagementPanel({
     <button
       type="button"
       onClick={() => setFilter(id)}
-      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+      className={`px-3 rounded-lg text-sm font-semibold transition-colors ${touchChoice} ${
         filter === id
           ? activeClass
           : "bg-slate-100 text-slate-600 hover:bg-slate-200"

@@ -14,6 +14,7 @@ import Link from "next/link";
 import BookImage from "@/components/ui/BookImage";
 import Image from "next/image";
 import PincodeField from "@/components/checkout/PincodeField";
+import { touchChoice } from "@/lib/touch-target";
 
 export default function Checkout() {
   const {
@@ -503,7 +504,7 @@ export default function Checkout() {
                   type="button"
                   onClick={() => setPaymentType("cash")}
                   className={cn(
-                    "flex flex-col items-center justify-center p-4 rounded-xl border-2 text-center transition-all duration-200 gap-2 cursor-pointer",
+                    `flex flex-col items-center justify-center rounded-xl border-2 text-center transition-all duration-200 gap-2 cursor-pointer ${touchChoice} p-4 sm:p-4`,
                     paymentType === "cash"
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border hover:border-gray-300 bg-background text-muted-foreground"
@@ -516,7 +517,7 @@ export default function Checkout() {
                   type="button"
                   onClick={() => setPaymentType("bank")}
                   className={cn(
-                    "flex flex-col items-center justify-center p-4 rounded-xl border-2 text-center transition-all duration-200 gap-2 cursor-pointer",
+                    `flex flex-col items-center justify-center rounded-xl border-2 text-center transition-all duration-200 gap-2 cursor-pointer ${touchChoice} p-4 sm:p-4`,
                     paymentType === "bank"
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border hover:border-gray-300 bg-background text-muted-foreground"

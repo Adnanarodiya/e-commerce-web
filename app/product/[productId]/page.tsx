@@ -238,7 +238,7 @@ export default function Product() {
                       size="icon"
                       onClick={() => handleQuantityChange("decrement")}
                       disabled={parsedQuantity <= 1}
-                      className="h-10 w-10 shrink-0 rounded-r-none"
+                      className="shrink-0 rounded-r-none"
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
@@ -251,7 +251,7 @@ export default function Product() {
                       onBlur={handleQuantityBlur}
                       aria-label={isRtl ? "تعداد" : "Quantity"}
                       aria-invalid={exceedsStock}
-                      className="h-10 min-w-[2.5rem] max-w-[12rem] border-0 bg-transparent px-2 text-center font-medium tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="h-11 sm:h-10 min-w-[2.5rem] max-w-[12rem] border-0 bg-transparent px-2 text-center font-medium tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       style={{ width: quantityInputWidth }}
                     />
                     <Button
@@ -259,7 +259,7 @@ export default function Product() {
                       size="icon"
                       onClick={() => handleQuantityChange("increment")}
                       disabled={!isOutOfStock && parsedQuantity >= book.stock}
-                      className="h-10 w-10 shrink-0 rounded-l-none"
+                      className="shrink-0 rounded-l-none"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>

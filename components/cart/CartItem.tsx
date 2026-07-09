@@ -50,7 +50,7 @@ export default function CartItem({ item, isLast }: CartItemProps) {
               variant="ghost"
               size="icon"
               onClick={() => removeFromCart(item.id)}
-              className="text-muted-foreground hover:text-destructive h-8 w-8 shrink-0"
+              className="text-muted-foreground hover:text-destructive shrink-0"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -65,7 +65,7 @@ export default function CartItem({ item, isLast }: CartItemProps) {
                   updateQuantity(item.id, Math.max(1, item.quantity - 1))
                 }
                 disabled={item.quantity <= 1}
-                className={`h-8 w-8 ${isRtl ? "rounded-l-none rounded-r" : "rounded-r-none rounded-l"}`}
+                className={isRtl ? "rounded-l-none rounded-r" : "rounded-r-none rounded-l"}
               >
                 <Minus className="h-3 w-3" />
               </Button>
@@ -76,7 +76,7 @@ export default function CartItem({ item, isLast }: CartItemProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                className={`h-8 w-8 ${isRtl ? "rounded-r-none rounded-l" : "rounded-l-none rounded-r"}`}
+                className={isRtl ? "rounded-r-none rounded-l" : "rounded-l-none rounded-r"}
               >
                 <Plus className="h-3 w-3" />
               </Button>

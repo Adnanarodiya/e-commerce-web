@@ -122,7 +122,7 @@ export default function PackedOrdersPanel({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs"
+                  className="text-xs"
                   onClick={() => onPrintSlip(order)}
                 >
                   <Printer className="h-3.5 w-3.5 mr-1" />
@@ -133,7 +133,7 @@ export default function PackedOrdersPanel({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs"
+                  className="text-xs"
                   onClick={() => onDownloadBill(order)}
                 >
                   <Download className="h-3.5 w-3.5 mr-1" />
@@ -143,7 +143,7 @@ export default function PackedOrdersPanel({
               {!order.pickup_confirmed && (
                 <Button
                   size="sm"
-                  className="h-8 text-xs bg-slate-800 hover:bg-slate-900 text-white"
+                  className="text-xs bg-slate-800 hover:bg-slate-900 text-white"
                   onClick={() => onConfirmPickup(order.id)}
                   disabled={confirmingId === order.id}
                 >

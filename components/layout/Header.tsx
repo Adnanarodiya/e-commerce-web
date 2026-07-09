@@ -9,6 +9,7 @@ import { Menu, Search, ShoppingCart, X, Globe } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { touchIconBtn } from "@/lib/touch-target";
 
 interface SearchBook {
   id: number;
@@ -296,7 +297,7 @@ export default function Header() {
           <div className={`flex items-center ${isRtl ? "space-x-reverse space-x-2 sm:space-x-4" : "space-x-2 sm:space-x-4"}`}>
             <button
               onClick={() => setLanguage(language === "en" ? "ur" : "en")}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              className={`flex items-center gap-1 px-3 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors min-h-[44px] sm:min-h-0 py-2.5 sm:py-1.5`}
               title="Switch Language"
             >
               <Globe className="h-3.5 w-3.5" />
@@ -305,7 +306,7 @@ export default function Header() {
 
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="lg:hidden p-2 rounded-full hover:bg-accent transition-colors"
+              className={`lg:hidden rounded-full hover:bg-accent transition-colors ${touchIconBtn} p-2`}
               aria-label="Search"
             >
               <Search className="h-5 w-5 text-muted-foreground" />
@@ -314,7 +315,7 @@ export default function Header() {
             {showNav && (
             <button
               onClick={toggleMobileMenu}
-              className="md:hidden p-2 rounded-full hover:bg-accent transition-colors"
+              className={`md:hidden rounded-full hover:bg-accent transition-colors ${touchIconBtn} p-2`}
               aria-label="Toggle navigation menu"
               aria-expanded={isMobileOpen}
             >
@@ -328,7 +329,7 @@ export default function Header() {
 
             <Link
               href="/cart"
-              className="relative p-2 rounded-full hover:bg-accent transition-all duration-200 group"
+              className={`relative rounded-full hover:bg-accent transition-all duration-200 group ${touchIconBtn} p-2`}
               aria-label={`Shopping cart with ${cartCount} items`}
             >
               <ShoppingCart className="h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -362,7 +363,7 @@ export default function Header() {
                   key={href}
                   href={href}
                   onClick={closeMobileMenu}
-                  className={`text-sm font-bold py-2 px-3 rounded-md transition-all ${
+                  className={`text-sm font-bold px-3 rounded-md transition-all min-h-[44px] flex items-center sm:min-h-0 py-2 ${
                     isActivePath(href)
                       ? "bg-primary text-primary-foreground"
                       : "text-primary hover:bg-accent"
