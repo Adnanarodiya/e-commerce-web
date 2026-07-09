@@ -893,34 +893,55 @@ export default function AdminDashboard() {
                     <p className="text-muted-foreground text-sm mt-1">All incoming orders have been assigned to packer or completed.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {pendingOrders.map(order => (
-                      <div key={order.id} className="p-4 border rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-muted/10 shadow-sm">
-                        <div className="space-y-1 text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-md text-slate-800">{order.customer_name}</span>
-                            <Badge variant="secondary" className="text-[10px] uppercase font-bold">{order.id}</Badge>
-                            <Badge className="bg-blue-500 hover:bg-blue-600 uppercase text-[9px] font-extrabold">{order.payment_type}</Badge>
+                      <div
+                        key={order.id}
+                        className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+                      >
+                        <div className="p-4 space-y-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <h3 className="font-bold text-base text-slate-900">{order.customer_name}</h3>
+                              <p className="text-sm text-muted-foreground mt-0.5 tabular-nums">{order.customer_phone}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 shrink-0">
+                              <Badge variant="secondary" className="text-[10px] uppercase font-bold font-mono">
+                                {order.id}
+                              </Badge>
+                              <Badge className="bg-blue-500 hover:bg-blue-600 uppercase text-[10px] font-bold">
+                                {order.payment_type}
+                              </Badge>
+                            </div>
                           </div>
-                          <p className="text-muted-foreground font-semibold"><span className="text-slate-800">Phone:</span> {order.customer_phone}</p>
-                          <p className="text-muted-foreground"><span className="text-slate-800">Address:</span> {order.customer_address}</p>
-                          
-                          <div className="pt-2 font-bold text-slate-700">
-                            Items: {order.items.map(i => `${i.book_name} (x${i.quantity})`).join(", ")}
+
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            <span className="font-semibold text-slate-700">Address: </span>
+                            {order.customer_address}
+                          </p>
+
+                          <div className="rounded-lg bg-slate-50 border border-slate-100 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                              Items
+                            </p>
+                            <p className="text-sm font-medium text-slate-800 leading-relaxed">
+                              {order.items.map((i) => `${i.book_name} (×${i.quantity})`).join(", ")}
+                            </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                          <div className="text-right text-xs">
-                            <span className="text-muted-foreground block">{t("productsTotal")}</span>
-                            <span className="text-md font-bold text-primary">
+                        <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-3 space-y-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground">{t("productsTotal")}</p>
+                            <p className="text-xl font-bold text-primary tabular-nums">
                               ₹{Math.max(0, order.subtotal - order.discount).toFixed(2)}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground block mt-0.5">
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
                               + packaging & courier on call
-                            </span>
+                            </p>
                           </div>
-                          <div className="flex flex-col gap-2">
+
+                          <div className="grid grid-cols-2 gap-2">
                             <Button
                               variant="outline"
                               size="sm"
@@ -930,14 +951,15 @@ export default function AdminDashboard() {
                                 setCancelModal(order);
                               }}
                             >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              <Trash2 className="h-3.5 w-3.5 mr-1 shrink-0" />
                               {t("cancelOrder")}
                             </Button>
                             <Button
-                              className="w-full bg-primary hover:bg-primary/95 text-white font-bold"
+                              size="sm"
+                              className="w-full text-xs bg-primary hover:bg-primary/95 text-white font-semibold"
                               onClick={() => handleReadyToPackClick(order)}
                             >
-                              <PhoneCall className="h-4 w-4 mr-2" />
+                              <PhoneCall className="h-3.5 w-3.5 mr-1 shrink-0" />
                               {t("confirmOrder")}
                             </Button>
                           </div>
@@ -955,31 +977,51 @@ export default function AdminDashboard() {
                   <CardTitle className="text-md font-bold">With Packer</CardTitle>
                   <CardDescription>Orders waiting to be packed</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2 text-xs">
+                <CardContent className="space-y-3">
                   {orders
                     .filter((o) => o.status === "ready_to_pack")
                     .map((order) => (
-                      <div key={order.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border p-3 bg-orange-50/50 rounded-lg">
-                        <div className="space-y-1">
-                          <div>
-                            <span className="font-bold">{order.customer_name}</span>
-                            <span className="text-muted-foreground ml-2">{order.id}</span>
+                      <div
+                        key={order.id}
+                        className="rounded-xl border border-orange-200 bg-orange-50/40 overflow-hidden"
+                      >
+                        <div className="p-4 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <span className="font-bold text-sm text-slate-900">{order.customer_name}</span>
+                              <span className="text-muted-foreground ml-2 text-xs font-mono">{order.id}</span>
+                            </div>
+                            <Badge className="bg-orange-500 text-white text-[10px]">With Packer</Badge>
                           </div>
-                          <p className="text-[11px] text-muted-foreground">
-                            Products: ₹{Math.max(0, order.subtotal - order.discount).toFixed(2)}
-                            {" · "}Packaging: ₹{order.packaging_charge.toFixed(2)}
-                            {" · "}Courier: ₹{(order.courier_charge ?? 0).toFixed(2)}
-                            {" · "}<span className="font-semibold text-primary">Total: ₹{order.total.toFixed(2)}</span>
-                          </p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                            <div className="rounded-md bg-white/80 border border-orange-100 px-2 py-1.5">
+                              <span className="text-muted-foreground block">Products</span>
+                              <span className="font-semibold tabular-nums">
+                                ₹{Math.max(0, order.subtotal - order.discount).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="rounded-md bg-white/80 border border-orange-100 px-2 py-1.5">
+                              <span className="text-muted-foreground block">Packaging</span>
+                              <span className="font-semibold tabular-nums">₹{order.packaging_charge.toFixed(2)}</span>
+                            </div>
+                            <div className="rounded-md bg-white/80 border border-orange-100 px-2 py-1.5">
+                              <span className="text-muted-foreground block">Courier</span>
+                              <span className="font-semibold tabular-nums">₹{(order.courier_charge ?? 0).toFixed(2)}</span>
+                            </div>
+                            <div className="rounded-md bg-white/80 border border-orange-100 px-2 py-1.5">
+                              <span className="text-muted-foreground block">Total</span>
+                              <span className="font-bold text-primary tabular-nums">₹{order.total.toFixed(2)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="border-t border-orange-200/80 bg-white/50 px-4 py-3 grid grid-cols-2 gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             className="w-full text-xs"
                             onClick={() => handleDownloadBill(order)}
                           >
-                            <Download className="h-3.5 w-3.5 mr-1" />
+                            <Download className="h-3.5 w-3.5 mr-1 shrink-0" />
                             {t("downloadConfirmation")}
                           </Button>
                           <Button
@@ -987,10 +1029,9 @@ export default function AdminDashboard() {
                             className="w-full text-xs bg-green-600 hover:bg-green-700 text-white"
                             onClick={() => shareOrderOnWhatsApp(order)}
                           >
-                            <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                            <MessageCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
                             {t("shareWhatsApp")}
                           </Button>
-                          <Badge className="bg-orange-500 text-white">With Packer</Badge>
                         </div>
                       </div>
                     ))}

@@ -297,7 +297,7 @@ export default function Header() {
           <div className={`flex items-center ${isRtl ? "space-x-reverse space-x-2 sm:space-x-4" : "space-x-2 sm:space-x-4"}`}>
             <button
               onClick={() => setLanguage(language === "en" ? "ur" : "en")}
-              className={`flex items-center gap-1 px-3 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors min-h-[44px] sm:min-h-0 py-2.5 sm:py-1.5`}
+              className={`flex items-center gap-1 px-3 rounded-full border border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors min-h-[36px] sm:min-h-0 py-2 sm:py-1.5`}
               title="Switch Language"
             >
               <Globe className="h-3.5 w-3.5" />
@@ -363,7 +363,7 @@ export default function Header() {
                   key={href}
                   href={href}
                   onClick={closeMobileMenu}
-                  className={`text-sm font-bold px-3 rounded-md transition-all min-h-[44px] flex items-center sm:min-h-0 py-2 ${
+                  className={`text-sm font-bold px-3 rounded-md transition-all min-h-[36px] flex items-center sm:min-h-0 py-2 ${
                     isActivePath(href)
                       ? "bg-primary text-primary-foreground"
                       : "text-primary hover:bg-accent"

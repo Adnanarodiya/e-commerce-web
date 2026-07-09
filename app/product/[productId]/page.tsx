@@ -251,7 +251,7 @@ export default function Product() {
                       onBlur={handleQuantityBlur}
                       aria-label={isRtl ? "تعداد" : "Quantity"}
                       aria-invalid={exceedsStock}
-                      className="h-11 sm:h-10 min-w-[2.5rem] max-w-[12rem] border-0 bg-transparent px-2 text-center font-medium tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="min-h-[36px] sm:h-10 min-w-[2.5rem] max-w-[12rem] border-0 bg-transparent px-2 text-center font-medium tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       style={{ width: quantityInputWidth }}
                     />
                     <Button
