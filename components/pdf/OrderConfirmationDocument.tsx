@@ -244,7 +244,7 @@ export default function OrderConfirmationDocument({
           {pctDisc > 0 && (
             <View style={styles.totalRow}>
               <Text style={{ fontSize: 10, color: GREEN }}>
-                {data.payment_type === "bank" ? "10%" : "15%"} discount (books)
+                10% discount (books, orders ₹5,000+)
               </Text>
               <Text style={{ fontSize: 10, color: GREEN, fontFamily: "Helvetica-Bold" }}>
                 -{money(pctDisc)}

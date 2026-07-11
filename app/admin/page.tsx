@@ -15,14 +15,23 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   TrendingUp, BarChart3, BookOpen,
-  Settings, Layers, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, HandCoins, MessageCircle
+  Settings, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, PackageCheck, HandCoins, MessageCircle
 } from "lucide-react";
 import Image from "next/image";
 import { downloadInvoicePdf, downloadOrderConfirmationPdf } from "@/lib/pdf-download";
 import { buildOrderConfirmationData } from "@/lib/order-confirmation";
 import { openWhatsAppChat, formatOrderWhatsAppMessage } from "@/lib/whatsapp";
 import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
-import { stockValuation, sumGrossProfit, unitMargin, formatRupee } from "@/lib/profit";
+import {
+  stockValuation,
+  sumGrossProfit,
+  unitMargin,
+  formatRupee,
+  orderProductRevenue,
+  orderPackagingCharge,
+  orderCourierCharge,
+  isConfirmedForRevenue,
+} from "@/lib/profit";
 import MobileSheet from "@/components/ui/MobileSheet";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import StockAlertCards from "@/components/admin/StockAlertCards";
@@ -103,20 +112,24 @@ export default function AdminDashboard() {
   const [statementRange, setStatementRange] = useState<"today" | "week" | "month" | "year" | "all">("today");
   const [statementMode, setStatementMode] = useState<"bank" | "cash">("bank");
 
-  // Call confirmation modal state
+  // Quotation modal (packaging + courier charges)
   const [callModal, setCallModal] = useState<Order | null>(null);
   const [chargePackaging, setChargePackaging] = useState("0");
   const [chargeCourier, setChargeCourier] = useState("0");
   const [chargeNotes, setChargeNotes] = useState("");
-  const [confirmingOrder, setConfirmingOrder] = useState(false);
+  const [submittingQuotation, setSubmittingQuotation] = useState(false);
+
+  // Confirm order → send to packer
+  const [confirmPackModal, setConfirmPackModal] = useState<Order | null>(null);
+  const [confirmingToPacker, setConfirmingToPacker] = useState(false);
 
   // Cancel order modal
   const [cancelModal, setCancelModal] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancellingOrder, setCancellingOrder] = useState(false);
 
-  // WhatsApp send prompt after order confirm
-  const [whatsappPromptOrder, setWhatsappPromptOrder] = useState<Order | null>(null);
+  // WhatsApp send prompt after quotation
+  const [whatsappQuotationOrder, setWhatsappQuotationOrder] = useState<Order | null>(null);
   const [sharingWhatsApp, setSharingWhatsApp] = useState(false);
 
   // QR Code edit state
@@ -225,9 +238,7 @@ export default function AdminDashboard() {
   // Calculations
   const stockStats = stockValuation(books);
   const totalStockQuantity = stockStats.quantity;
-  const totalStockValue = stockStats.atSellPrice;
   const totalStockCost = stockStats.atCostPrice;
-  const stockMarginPotential = stockStats.potentialMargin;
   const outOfStockBooks = books.filter(b => b.stock === 0);
   const lowStockBooks = books.filter(b => b.stock > 0 && b.stock < LOW_STOCK_THRESHOLD);
   const criticalStockCount = outOfStockBooks.length + lowStockBooks.length;
@@ -248,13 +259,15 @@ export default function AdminDashboard() {
   };
 
   const filteredOrders = getFilteredOrders();
-  const bankEarnings = filteredOrders
-    .filter(o => o.payment_type === "bank" && o.status !== "pending" && o.status !== "cancelled")
-    .reduce((sum, o) => sum + o.total, 0);
+  const confirmedInPeriod = filteredOrders.filter((o) => isConfirmedForRevenue(o.status));
 
-  const cashEarnings = filteredOrders
-    .filter(o => o.payment_type === "cash" && o.status !== "pending" && o.status !== "cancelled")
-    .reduce((sum, o) => sum + o.total, 0);
+  const bankEarnings = confirmedInPeriod
+    .filter((o) => o.payment_type === "bank")
+    .reduce((sum, o) => sum + orderProductRevenue(o), 0);
+
+  const cashEarnings = confirmedInPeriod
+    .filter((o) => o.payment_type === "cash")
+    .reduce((sum, o) => sum + orderProductRevenue(o), 0);
 
   const totalEarnings = bankEarnings + cashEarnings;
   const periodGrossProfit = sumGrossProfit(filteredOrders, books);
@@ -271,10 +284,10 @@ export default function AdminDashboard() {
   const buildConfirmation = (order: Order) =>
     buildOrderConfirmationData(order, getQuranMap(), upiSettings);
 
-  const handleReadyToPackClick = (order: Order) => {
-    setChargePackaging("0");
-    setChargeCourier("0");
-    setChargeNotes("");
+  const handleQuotationClick = (order: Order) => {
+    setChargePackaging(String(order.packaging_charge ?? 0));
+    setChargeCourier(String(order.courier_charge ?? 0));
+    setChargeNotes(order.admin_notes ?? "");
     setCallModal(order);
   };
 
@@ -286,32 +299,26 @@ export default function AdminDashboard() {
     Math.max(0, parseFloat(chargePackaging) || 0) +
     Math.max(0, parseFloat(chargeCourier) || 0);
 
-  const shareOrderOnWhatsApp = async (order: Order) => {
+  const shareOrderOnWhatsApp = (order: Order) => {
     const data = buildConfirmation(order);
     const message = formatOrderWhatsAppMessage(data);
-
-    // Open wa.me with customer phone from order + pre-filled message
     openWhatsAppChat(order.customer_phone, message);
-
-    // Download bill PDF so admin can attach in WhatsApp chat
-    try {
-      await downloadOrderConfirmationPdf(data);
-    } catch (err) {
-      console.error("PDF download failed:", err);
-      setToast({ message: "WhatsApp opened — PDF download failed, try Download button", visible: true });
-    }
+    setToast({
+      message: `WhatsApp opened for ${order.customer_phone}`,
+      visible: true,
+    });
   };
 
-  const confirmReadyToPack = async () => {
+  const submitQuotation = async () => {
     if (!callModal) return;
     const packaging = Math.max(0, parseFloat(chargePackaging) || 0);
     const courier = Math.max(0, parseFloat(chargeCourier) || 0);
     const productsTotal = Math.max(0, callModal.subtotal - callModal.discount);
     const finalTotal = productsTotal + packaging + courier;
 
-    setConfirmingOrder(true);
+    setSubmittingQuotation(true);
     try {
-      const success = await db.confirmOrderWithCharges(callModal.id, {
+      const success = await db.saveOrderQuotation(callModal.id, {
         packaging_charge: packaging,
         courier_charge: courier,
         total: finalTotal,
@@ -324,18 +331,62 @@ export default function AdminDashboard() {
           courier_charge: courier,
           total: finalTotal,
           admin_notes: chargeNotes.trim() || null,
-          status: "ready_to_pack",
-          confirmed_at: new Date().toISOString(),
         };
         setOrders((prev) =>
           prev.map((o) => (o.id === callModal.id ? updated : o))
         );
         setToast({
-          message: `Order ${callModal.id} confirmed — ready to pack`,
+          message: `${t("quotationSaved")} — ${callModal.id}`,
           visible: true,
         });
         setCallModal(null);
-        setWhatsappPromptOrder(updated);
+        setWhatsappQuotationOrder(updated);
+      } else {
+        setToast({ message: "Failed to save quotation", visible: true });
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Failed to save quotation", visible: true });
+    } finally {
+      setSubmittingQuotation(false);
+    }
+  };
+
+  const handleWhatsAppQuotationConfirm = () => {
+    if (!whatsappQuotationOrder) return;
+    const order = whatsappQuotationOrder;
+    const data = buildConfirmation(order);
+    const message = formatOrderWhatsAppMessage(data);
+
+    setSharingWhatsApp(true);
+    setWhatsappQuotationOrder(null);
+    openWhatsAppChat(order.customer_phone, message);
+    setToast({
+      message: `WhatsApp opened for ${order.customer_phone}`,
+      visible: true,
+    });
+    setSharingWhatsApp(false);
+  };
+
+  const handleConfirmOrderToPacker = async () => {
+    if (!confirmPackModal) return;
+    setConfirmingToPacker(true);
+    try {
+      const success = await db.sendOrderToPacker(confirmPackModal.id);
+      if (success) {
+        const updated: Order = {
+          ...confirmPackModal,
+          status: "ready_to_pack",
+          confirmed_at: new Date().toISOString(),
+        };
+        setOrders((prev) =>
+          prev.map((o) => (o.id === confirmPackModal.id ? updated : o))
+        );
+        setToast({
+          message: `${t("orderSentToPacker")} — ${confirmPackModal.id}`,
+          visible: true,
+        });
+        setConfirmPackModal(null);
       } else {
         setToast({ message: "Failed to confirm order", visible: true });
       }
@@ -343,36 +394,7 @@ export default function AdminDashboard() {
       console.error(err);
       setToast({ message: "Failed to confirm order", visible: true });
     } finally {
-      setConfirmingOrder(false);
-    }
-  };
-
-  const handleWhatsAppPromptConfirm = async () => {
-    if (!whatsappPromptOrder) return;
-    const order = whatsappPromptOrder;
-    const data = buildConfirmation(order);
-    const message = formatOrderWhatsAppMessage(data);
-
-    setSharingWhatsApp(true);
-    setWhatsappPromptOrder(null);
-
-    // Open wa.me first (uses phone from order address)
-    openWhatsAppChat(order.customer_phone, message);
-
-    try {
-      await downloadOrderConfirmationPdf(data);
-      setToast({
-        message: `WhatsApp opened for ${order.customer_phone} — attach the downloaded PDF`,
-        visible: true,
-      });
-    } catch (err) {
-      console.error("PDF download failed:", err);
-      setToast({
-        message: "WhatsApp opened — use Download button if PDF did not save",
-        visible: true,
-      });
-    } finally {
-      setSharingWhatsApp(false);
+      setConfirmingToPacker(false);
     }
   };
 
@@ -686,7 +708,7 @@ export default function AdminDashboard() {
                         {formatRupee(periodGrossProfit)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        {profitMarginPct}% margin on {formatRupee(totalEarnings)} revenue ({timeFilter})
+                        {profitMarginPct}% margin on book sales ({timeFilter})
                       </p>
                     </div>
                     <HandCoins className="h-9 w-9 shrink-0 text-emerald-600 bg-emerald-50 p-1.5 rounded-lg" />
@@ -703,27 +725,10 @@ export default function AdminDashboard() {
                         {formatRupee(totalEarnings)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        Bank {formatRupee(bankEarnings)} · Cash {formatRupee(cashEarnings)}
+                        Book sales only · Bank {formatRupee(bankEarnings)} · Cash {formatRupee(cashEarnings)}
                       </p>
                     </div>
                     <BarChart3 className="h-9 w-9 shrink-0 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-sm rounded-xl border border-border">
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Stock at Sell Price</p>
-                      <h3 className="text-xl sm:text-2xl font-bold mt-1 text-slate-800 tabular-nums">
-                        {formatRupee(totalStockValue)}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        {totalStockQuantity.toLocaleString()} books in inventory
-                      </p>
-                    </div>
-                    <Layers className="h-9 w-9 shrink-0 text-primary/80 bg-primary/10 p-1.5 rounded-lg" />
                   </div>
                 </CardContent>
               </Card>
@@ -737,7 +742,7 @@ export default function AdminDashboard() {
                         {formatRupee(totalStockCost)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        Potential margin if all sold: {formatRupee(stockMarginPotential)}
+                        {totalStockQuantity.toLocaleString()} books in inventory (buying price)
                       </p>
                     </div>
                     <Package className="h-9 w-9 shrink-0 text-amber-600 bg-amber-50 p-1.5 rounded-lg" />
@@ -754,7 +759,7 @@ export default function AdminDashboard() {
                         {formatRupee(bankEarnings)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        Bank / UPI (confirmed orders)
+                        Book sales via Bank / UPI
                       </p>
                     </div>
                     <TrendingUp className="h-9 w-9 shrink-0 text-blue-500 bg-blue-50 p-1.5 rounded-lg" />
@@ -771,7 +776,7 @@ export default function AdminDashboard() {
                         {formatRupee(cashEarnings)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        Cash on delivery (confirmed)
+                        Book sales via cash on delivery
                       </p>
                     </div>
                     <TrendingUp className="h-9 w-9 shrink-0 text-green-500 bg-green-50 p-1.5 rounded-lg" />
@@ -796,7 +801,9 @@ export default function AdminDashboard() {
             <Card className="rounded-xl shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg font-bold">{t("ledger")}</CardTitle>
-                <CardDescription>Statements of completed Bank & Cash earnings in filtered period ({timeFilter})</CardDescription>
+                <CardDescription>
+                  Customer payments with breakdown. &quot;Earned&quot; is book sales only — packaging &amp; courier are pass-through.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-8">
@@ -807,19 +814,30 @@ export default function AdminDashboard() {
                       {t("bankStatement")}
                     </h3>
                     <div className="border rounded-xl divide-y text-xs max-h-[300px] overflow-y-auto">
-                      {filteredOrders.filter(o => o.payment_type === "bank" && o.status !== "pending" && o.status !== "cancelled").length === 0 ? (
+                      {filteredOrders.filter(o => o.payment_type === "bank" && isConfirmedForRevenue(o.status)).length === 0 ? (
                         <p className="p-4 text-center text-muted-foreground">No bank statements</p>
                       ) : (
-                        filteredOrders.filter(o => o.payment_type === "bank" && o.status !== "pending" && o.status !== "cancelled").map((order, idx) => (
-                          <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/30">
+                        filteredOrders.filter(o => o.payment_type === "bank" && isConfirmedForRevenue(o.status)).map((order, idx) => {
+                          const booksAmt = orderProductRevenue(order);
+                          const packAmt = orderPackagingCharge(order);
+                          const courierAmt = orderCourierCharge(order);
+                          return (
+                          <div key={idx} className="p-3 flex justify-between items-start gap-3 hover:bg-muted/30">
                             <div className="min-w-0">
                               <span className="font-bold text-slate-700 block">{order.id}</span>
                               <span className="text-[10px] text-muted-foreground block">{new Date(order.created_at).toLocaleDateString()} | {order.customer_name}</span>
                               <span className="text-[10px] text-blue-600 font-mono block truncate">UPI: {upiSettings.upi_id}</span>
+                              <span className="text-[10px] text-muted-foreground block mt-1">
+                                Books {formatRupee(booksAmt, 2)} · Pack {formatRupee(packAmt, 2)} · Courier {formatRupee(courierAmt, 2)}
+                              </span>
                             </div>
-                            <span className="font-bold text-blue-600 shrink-0">₹{order.total.toFixed(2)}</span>
+                            <div className="text-right shrink-0">
+                              <span className="font-bold text-blue-600 block tabular-nums">₹{order.total.toFixed(2)}</span>
+                              <span className="text-[10px] font-semibold text-emerald-700 block">Earned {formatRupee(booksAmt, 2)}</span>
+                            </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -831,18 +849,29 @@ export default function AdminDashboard() {
                       {t("cashStatement")}
                     </h3>
                     <div className="border rounded-xl divide-y text-xs max-h-[300px] overflow-y-auto">
-                      {filteredOrders.filter(o => o.payment_type === "cash" && o.status !== "pending" && o.status !== "cancelled").length === 0 ? (
+                      {filteredOrders.filter(o => o.payment_type === "cash" && isConfirmedForRevenue(o.status)).length === 0 ? (
                         <p className="p-4 text-center text-muted-foreground">No cash statements</p>
                       ) : (
-                        filteredOrders.filter(o => o.payment_type === "cash" && o.status !== "pending" && o.status !== "cancelled").map((order, idx) => (
-                          <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/30">
+                        filteredOrders.filter(o => o.payment_type === "cash" && isConfirmedForRevenue(o.status)).map((order, idx) => {
+                          const booksAmt = orderProductRevenue(order);
+                          const packAmt = orderPackagingCharge(order);
+                          const courierAmt = orderCourierCharge(order);
+                          return (
+                          <div key={idx} className="p-3 flex justify-between items-start gap-3 hover:bg-muted/30">
                             <div>
                               <span className="font-bold text-slate-700 block">{order.id}</span>
                               <span className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString()} | {order.customer_name}</span>
+                              <span className="text-[10px] text-muted-foreground block mt-1">
+                                Books {formatRupee(booksAmt, 2)} · Pack {formatRupee(packAmt, 2)} · Courier {formatRupee(courierAmt, 2)}
+                              </span>
                             </div>
-                            <span className="font-bold text-green-600">₹{order.total.toFixed(2)}</span>
+                            <div className="text-right shrink-0">
+                              <span className="font-bold text-green-600 block tabular-nums">₹{order.total.toFixed(2)}</span>
+                              <span className="text-[10px] font-semibold text-emerald-700 block">Earned {formatRupee(booksAmt, 2)}</span>
+                            </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -901,11 +930,18 @@ export default function AdminDashboard() {
                       >
                         <div className="p-4 space-y-3">
                           <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <h3 className="font-bold text-base text-slate-900">{order.customer_name}</h3>
-                              <p className="text-sm text-muted-foreground mt-0.5 tabular-nums">{order.customer_phone}</p>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-bold text-base text-slate-900 leading-tight">
+                                {order.customer_name}
+                              </h3>
+                              <a
+                                href={`tel:${order.customer_phone.replace(/\s/g, "")}`}
+                                className="text-sm text-primary font-medium mt-1 inline-block tabular-nums hover:underline"
+                              >
+                                {order.customer_phone}
+                              </a>
                             </div>
-                            <div className="flex flex-wrap gap-1.5 shrink-0">
+                            <div className="flex flex-wrap gap-1.5 shrink-0 justify-end">
                               <Badge variant="secondary" className="text-[10px] uppercase font-bold font-mono">
                                 {order.id}
                               </Badge>
@@ -915,8 +951,8 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            <span className="font-semibold text-slate-700">Address: </span>
+                          <p className="text-sm text-slate-600 leading-relaxed">
+                            <span className="font-semibold text-slate-800">Address: </span>
                             {order.customer_address}
                           </p>
 
@@ -930,37 +966,56 @@ export default function AdminDashboard() {
                           </div>
                         </div>
 
-                        <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-3 space-y-3">
-                          <div>
-                            <p className="text-xs text-muted-foreground">{t("productsTotal")}</p>
-                            <p className="text-xl font-bold text-primary tabular-nums">
+                        <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-4">
+                          <div className="flex items-end justify-between gap-3 mb-4">
+                            <div className="min-w-0">
+                              <p className="text-xs text-muted-foreground leading-snug">
+                                {t("productsTotal")}
+                              </p>
+                              {(order.packaging_charge > 0 || (order.courier_charge ?? 0) > 0) ? (
+                                <p className="text-[11px] text-emerald-700 font-medium mt-1 leading-snug">
+                                  Quoted ₹{order.total.toFixed(2)} · pack ₹{order.packaging_charge.toFixed(0)} + courier ₹{(order.courier_charge ?? 0).toFixed(0)}
+                                </p>
+                              ) : (
+                                <p className="text-[11px] text-muted-foreground mt-1">
+                                  + packaging & courier on call
+                                </p>
+                              )}
+                            </div>
+                            <p className="text-2xl font-bold text-primary tabular-nums shrink-0">
                               ₹{Math.max(0, order.subtotal - order.discount).toFixed(2)}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                              + packaging & courier on call
                             </p>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full text-xs font-semibold border-primary/30 text-primary hover:bg-primary/5"
+                              onClick={() => handleQuotationClick(order)}
+                            >
+                              <PhoneCall className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                              {t("quotationOrder")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                              onClick={() => setConfirmPackModal(order)}
+                            >
+                              <Check className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                              {t("confirmOrder")}
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="w-full text-xs text-red-600 border-red-200 hover:bg-red-50"
+                              className="w-full text-xs font-semibold text-red-600 border-red-200 bg-white hover:bg-red-50 hover:text-red-700"
                               onClick={() => {
                                 setCancelReason("");
                                 setCancelModal(order);
                               }}
                             >
-                              <Trash2 className="h-3.5 w-3.5 mr-1 shrink-0" />
+                              <Trash2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                               {t("cancelOrder")}
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="w-full text-xs bg-primary hover:bg-primary/95 text-white font-semibold"
-                              onClick={() => handleReadyToPackClick(order)}
-                            >
-                              <PhoneCall className="h-3.5 w-3.5 mr-1 shrink-0" />
-                              {t("confirmOrder")}
                             </Button>
                           </div>
                         </div>
@@ -983,55 +1038,75 @@ export default function AdminDashboard() {
                     .map((order) => (
                       <div
                         key={order.id}
-                        className="rounded-xl border border-orange-200 bg-orange-50/40 overflow-hidden"
+                        className="rounded-xl border border-orange-200 bg-white shadow-sm overflow-hidden"
                       >
-                        <div className="p-4 space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                              <span className="font-bold text-sm text-slate-900">{order.customer_name}</span>
-                              <span className="text-muted-foreground ml-2 text-xs font-mono">{order.id}</span>
+                        <div className="p-4 space-y-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-bold text-sm text-slate-900 leading-tight">
+                                {order.customer_name}
+                              </h3>
+                              <a
+                                href={`tel:${order.customer_phone.replace(/\s/g, "")}`}
+                                className="text-xs text-primary font-medium mt-1 inline-block tabular-nums hover:underline"
+                              >
+                                {order.customer_phone}
+                              </a>
                             </div>
-                            <Badge className="bg-orange-500 text-white text-[10px]">With Packer</Badge>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <Badge className="bg-orange-500 text-white text-[10px]">With Packer</Badge>
+                              <span className="text-[10px] font-mono text-muted-foreground">{order.id}</span>
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                            <div className="rounded-md bg-white/80 border border-orange-100 px-2 py-1.5">
-                              <span className="text-muted-foreground block">Products</span>
-                              <span className="font-semibold tabular-nums">
+
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="rounded-lg bg-orange-50/60 border border-orange-100 px-3 py-2">
+                              <span className="text-muted-foreground block mb-0.5">Products</span>
+                              <span className="font-semibold tabular-nums text-slate-900">
                                 ₹{Math.max(0, order.subtotal - order.discount).toFixed(2)}
                               </span>
                             </div>
-                            <div className="rounded-md bg-white/80 border border-orange-100 px-2 py-1.5">
-                              <span className="text-muted-foreground block">Packaging</span>
-                              <span className="font-semibold tabular-nums">₹{order.packaging_charge.toFixed(2)}</span>
+                            <div className="rounded-lg bg-orange-50/60 border border-orange-100 px-3 py-2">
+                              <span className="text-muted-foreground block mb-0.5">Packaging</span>
+                              <span className="font-semibold tabular-nums text-slate-900">
+                                ₹{order.packaging_charge.toFixed(2)}
+                              </span>
                             </div>
-                            <div className="rounded-md bg-white/80 border border-orange-100 px-2 py-1.5">
-                              <span className="text-muted-foreground block">Courier</span>
-                              <span className="font-semibold tabular-nums">₹{(order.courier_charge ?? 0).toFixed(2)}</span>
+                            <div className="rounded-lg bg-orange-50/60 border border-orange-100 px-3 py-2">
+                              <span className="text-muted-foreground block mb-0.5">Courier</span>
+                              <span className="font-semibold tabular-nums text-slate-900">
+                                ₹{(order.courier_charge ?? 0).toFixed(2)}
+                              </span>
                             </div>
-                            <div className="rounded-md bg-white/80 border border-orange-100 px-2 py-1.5">
-                              <span className="text-muted-foreground block">Total</span>
-                              <span className="font-bold text-primary tabular-nums">₹{order.total.toFixed(2)}</span>
+                            <div className="rounded-lg bg-orange-50/60 border border-orange-100 px-3 py-2">
+                              <span className="text-muted-foreground block mb-0.5">Total</span>
+                              <span className="font-bold text-primary tabular-nums">
+                                ₹{order.total.toFixed(2)}
+                              </span>
                             </div>
                           </div>
                         </div>
-                        <div className="border-t border-orange-200/80 bg-white/50 px-4 py-3 grid grid-cols-2 gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-xs"
-                            onClick={() => handleDownloadBill(order)}
-                          >
-                            <Download className="h-3.5 w-3.5 mr-1 shrink-0" />
-                            {t("downloadConfirmation")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="w-full text-xs bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => shareOrderOnWhatsApp(order)}
-                          >
-                            <MessageCircle className="h-3.5 w-3.5 mr-1 shrink-0" />
-                            {t("shareWhatsApp")}
-                          </Button>
+
+                        <div className="border-t border-orange-100 bg-orange-50/30 px-4 py-4">
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-xs font-semibold border-slate-200"
+                              onClick={() => handleDownloadBill(order)}
+                            >
+                              <Download className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                              {t("downloadConfirmation")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="w-full text-xs font-semibold bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => shareOrderOnWhatsApp(order)}
+                            >
+                              <MessageCircle className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                              {t("shareWhatsApp")}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1090,7 +1165,7 @@ export default function AdminDashboard() {
                 Financial Statement
               </CardTitle>
               <CardDescription>
-                Full audit of Cash &amp; Bank earnings. Filter by period, then toggle between Bank and Cash ledgers. Bank rows include the UPI ID from your payment settings.
+                Full payment audit — customer paid vs what you earned (books only). Packaging &amp; courier shown separately.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1166,15 +1241,17 @@ export default function AdminDashboard() {
                   .filter(
                     (o) =>
                       o.payment_type === (statementMode === "bank" ? "bank" : "cash") &&
-                      o.status !== "pending" &&
-                      o.status !== "cancelled" &&
+                      isConfirmedForRevenue(o.status) &&
                       inRange(o.created_at)
                   )
                   .sort(
                     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                   );
 
-                const total = rows.reduce((sum, o) => sum + o.total, 0);
+                const totalPaid = rows.reduce((sum, o) => sum + o.total, 0);
+                const totalBooks = rows.reduce((sum, o) => sum + orderProductRevenue(o), 0);
+                const totalPackaging = rows.reduce((sum, o) => sum + orderPackagingCharge(o), 0);
+                const totalCourier = rows.reduce((sum, o) => sum + orderCourierCharge(o), 0);
 
                 if (rows.length === 0) {
                   return (
@@ -1186,7 +1263,7 @@ export default function AdminDashboard() {
 
                 return (
                   <div className="border rounded-lg overflow-x-auto">
-                    <table className="w-full text-xs sm:text-sm">
+                    <table className="w-full text-xs sm:text-sm min-w-[640px]">
                       <thead className="bg-muted/50 text-muted-foreground">
                         <tr>
                           <th className="text-left font-bold p-3 whitespace-nowrap">Date</th>
@@ -1195,11 +1272,19 @@ export default function AdminDashboard() {
                           {statementMode === "bank" && (
                             <th className="text-left font-bold p-3 whitespace-nowrap">UPI ID</th>
                           )}
-                          <th className="text-right font-bold p-3 whitespace-nowrap">Amount</th>
+                          <th className="text-right font-bold p-3 whitespace-nowrap">Books</th>
+                          <th className="text-right font-bold p-3 whitespace-nowrap">Packaging</th>
+                          <th className="text-right font-bold p-3 whitespace-nowrap">Courier</th>
+                          <th className="text-right font-bold p-3 whitespace-nowrap">Customer Paid</th>
+                          <th className="text-right font-bold p-3 whitespace-nowrap text-emerald-700">Earned</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map((order) => (
+                        {rows.map((order) => {
+                          const booksAmt = orderProductRevenue(order);
+                          const packAmt = orderPackagingCharge(order);
+                          const courierAmt = orderCourierCharge(order);
+                          return (
                           <tr key={order.id} className="border-t hover:bg-muted/30">
                             <td className="p-3 whitespace-nowrap text-muted-foreground">
                               {new Date(order.created_at).toLocaleDateString(undefined, {
@@ -1215,19 +1300,38 @@ export default function AdminDashboard() {
                                 {upiSettings.upi_id}
                               </td>
                             )}
-                            <td className={`p-3 text-right font-bold whitespace-nowrap ${statementMode === "bank" ? "text-blue-600" : "text-green-600"}`}>
+                            <td className="p-3 text-right tabular-nums whitespace-nowrap">
+                              ₹{booksAmt.toFixed(2)}
+                            </td>
+                            <td className="p-3 text-right tabular-nums whitespace-nowrap text-muted-foreground">
+                              ₹{packAmt.toFixed(2)}
+                            </td>
+                            <td className="p-3 text-right tabular-nums whitespace-nowrap text-muted-foreground">
+                              ₹{courierAmt.toFixed(2)}
+                            </td>
+                            <td className={`p-3 text-right font-bold tabular-nums whitespace-nowrap ${statementMode === "bank" ? "text-blue-600" : "text-green-600"}`}>
                               ₹{order.total.toFixed(2)}
                             </td>
+                            <td className="p-3 text-right font-bold tabular-nums whitespace-nowrap text-emerald-700">
+                              ₹{booksAmt.toFixed(2)}
+                            </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 bg-muted/40">
-                          <td className="p-3 font-bold" colSpan={statementMode === "bank" ? 3 : 2}>
+                          <td className="p-3 font-bold" colSpan={statementMode === "bank" ? 4 : 3}>
                             Total ({rows.length} transactions)
                           </td>
-                          <td className={`p-3 text-right font-bold ${statementMode === "bank" ? "text-blue-700" : "text-green-700"}`}>
-                            ₹{total.toFixed(2)}
+                          <td className="p-3 text-right font-bold tabular-nums">₹{totalBooks.toFixed(2)}</td>
+                          <td className="p-3 text-right font-bold tabular-nums text-muted-foreground">₹{totalPackaging.toFixed(2)}</td>
+                          <td className="p-3 text-right font-bold tabular-nums text-muted-foreground">₹{totalCourier.toFixed(2)}</td>
+                          <td className={`p-3 text-right font-bold tabular-nums ${statementMode === "bank" ? "text-blue-700" : "text-green-700"}`}>
+                            ₹{totalPaid.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right font-bold tabular-nums text-emerald-700">
+                            ₹{totalBooks.toFixed(2)}
                           </td>
                         </tr>
                       </tfoot>
@@ -1420,7 +1524,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Ready-to-pack confirmation modal */}
+      {/* Quotation modal — packaging & courier charges */}
       <MobileSheet
         open={!!callModal}
         onClose={() => setCallModal(null)}
@@ -1433,9 +1537,9 @@ export default function AdminDashboard() {
                   <PhoneCall className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-lg font-bold leading-tight">{t("confirmPackTitle")}</h3>
+                  <h3 className="text-lg font-bold leading-tight">{t("quotationPackTitle")}</h3>
                   <p className="text-sm text-white/85 mt-0.5">
-                    Verify with customer before sending to packer
+                    Enter charges agreed on the call — order stays pending
                   </p>
                 </div>
               </div>
@@ -1456,11 +1560,11 @@ export default function AdminDashboard() {
               <Button
                 size="lg"
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={confirmReadyToPack}
-                disabled={confirmingOrder}
+                onClick={submitQuotation}
+                disabled={submittingQuotation}
               >
                 <Check className="h-4 w-4 mr-2" />
-                {confirmingOrder ? "Confirming…" : t("confirmAndReadyToPack")}
+                {submittingQuotation ? "Saving…" : t("sendQuotation")}
               </Button>
               <Button variant="outline" size="lg" className="w-full" onClick={() => setCallModal(null)}>
                 {t("cancel")}
@@ -1472,7 +1576,7 @@ export default function AdminDashboard() {
         {callModal ? (
           <div className="px-4 py-4 sm:px-5 sm:py-5 space-y-4 text-left">
             <p className="text-sm text-slate-600 leading-relaxed">
-              {t("confirmPackPrompt").replace("{phone}", callModal.customer_phone)}
+              {t("quotationPackPrompt").replace("{phone}", callModal.customer_phone)}
             </p>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
@@ -1584,44 +1688,72 @@ export default function AdminDashboard() {
             </div>
 
             <p className="text-sm text-slate-600 leading-relaxed">
-              Confirm order details, quantities, delivery type, and collect packaging + courier payment on the call.
-              After confirming, you can send the bill on WhatsApp or download it later from the packer queue.
+              Save the quotation and optionally send the price breakdown on WhatsApp. Use <strong>Confirm Order</strong> when the customer agrees — that sends the order to the packer.
             </p>
           </div>
         ) : null}
       </MobileSheet>
 
-      {/* WhatsApp send prompt — after Confirm & Ready to Pack */}
+      {/* WhatsApp send prompt — after quotation */}
       <ConfirmModal
-        open={!!whatsappPromptOrder}
-        title={t("whatsappSendTitle")}
+        open={!!whatsappQuotationOrder}
+        title={t("whatsappQuotationTitle")}
         description={
-          whatsappPromptOrder
-            ? t("whatsappSendPrompt")
-                .replace("{name}", whatsappPromptOrder.customer_name)
-                .replace("{phone}", whatsappPromptOrder.customer_phone)
+          whatsappQuotationOrder
+            ? t("whatsappQuotationPrompt")
+                .replace("{name}", whatsappQuotationOrder.customer_name)
+                .replace("{phone}", whatsappQuotationOrder.customer_phone)
             : ""
         }
         confirmLabel={t("whatsappSendYes")}
         cancelLabel={t("whatsappSendNo")}
-        onConfirm={handleWhatsAppPromptConfirm}
-        onCancel={() => setWhatsappPromptOrder(null)}
+        onConfirm={handleWhatsAppQuotationConfirm}
+        onCancel={() => setWhatsappQuotationOrder(null)}
         loading={sharingWhatsApp}
         headerTone="green"
         icon={<MessageCircle className="h-5 w-5 text-white" />}
       >
-        {whatsappPromptOrder ? (
+        {whatsappQuotationOrder ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs space-y-1">
             <p>
               <span className="font-semibold text-slate-500">Order:</span>{" "}
-              {whatsappPromptOrder.id}
+              {whatsappQuotationOrder.id}
             </p>
             <p>
               <span className="font-semibold text-slate-500">Total:</span>{" "}
-              ₹{whatsappPromptOrder.total.toFixed(2)}
+              ₹{whatsappQuotationOrder.total.toFixed(2)}
             </p>
-            <p className="text-slate-500 pt-1">
-              Opens <strong>wa.me</strong> with the customer&apos;s number. The bill PDF downloads so you can attach it in the chat.
+            <p className="text-slate-500 pt-1">{t("whatsappQuotationHint")}</p>
+          </div>
+        ) : null}
+      </ConfirmModal>
+
+      {/* Confirm order → send to packer */}
+      <ConfirmModal
+        open={!!confirmPackModal}
+        title={t("confirmOrderTitle")}
+        description={t("confirmOrderPrompt")}
+        confirmLabel={t("confirmOrderYes")}
+        cancelLabel={t("cancel")}
+        onConfirm={handleConfirmOrderToPacker}
+        onCancel={() => setConfirmPackModal(null)}
+        loading={confirmingToPacker}
+        headerTone="primary"
+        icon={<PackageCheck className="h-5 w-5 text-white" />}
+      >
+        {confirmPackModal ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs space-y-1">
+            <p>
+              <span className="font-semibold text-slate-500">Order:</span>{" "}
+              {confirmPackModal.id}
+            </p>
+            <p>
+              <span className="font-semibold text-slate-500">Customer:</span>{" "}
+              {confirmPackModal.customer_name}
+            </p>
+            <p>
+              <span className="font-semibold text-slate-500">Total:</span>{" "}
+              ₹{confirmPackModal.total.toFixed(2)}
             </p>
           </div>
         ) : null}
@@ -1863,7 +1995,7 @@ export default function AdminDashboard() {
               className="h-5 w-5 mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer shrink-0"
             />
             <span>
-              Mark as <span className="font-bold text-emerald-700">Quran Sharif</span> — flat ₹25/copy discount, no % discount applied
+              Mark as <span className="font-bold text-emerald-700">Quran Sharif</span> — ₹25/copy off when order is ₹5,000+ (no % discount on Quran)
             </span>
           </label>
         </form>

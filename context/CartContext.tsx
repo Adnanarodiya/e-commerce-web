@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { computeOrderDiscounts } from "@/lib/discounts";
 import { normalizePincode } from "@/lib/pincode";
 import { shippingRateDescription } from "@/lib/shipping";
 
@@ -172,8 +173,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-  const QURAN_FLAT_DISCOUNT_PER_COPY = 25;
   const quranSubtotal = cart.reduce(
     (sum, item) => (item.is_quran ? sum + item.price * item.quantity : sum),
     0
@@ -206,18 +205,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     totalWeightGrams
   );
 
-  const quranDiscount = Math.min(quranSubtotal, quranQty * QURAN_FLAT_DISCOUNT_PER_COPY);
-
-  let percentageDiscount = 0;
-  if (subtotal >= 5000 && nonQuranSubtotal > 0) {
-    if (paymentType === "bank") {
-      percentageDiscount = nonQuranSubtotal * 0.10;
-    } else if (paymentType === "cash") {
-      percentageDiscount = nonQuranSubtotal * 0.15;
-    }
-  }
-
-  const discount = quranDiscount + percentageDiscount;
+  const { quranDiscount, percentageDiscount, discount } = computeOrderDiscounts({
+    subtotal,
+    quranSubtotal,
+    quranQty,
+    nonQuranSubtotal,
+  });
   const total = Math.max(0, subtotal - discount);
 
   return (

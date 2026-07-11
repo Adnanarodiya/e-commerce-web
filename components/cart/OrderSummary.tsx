@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { CreditCard, Heart, Shield, Truck, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
 import PincodeField from "@/components/checkout/PincodeField";
+import { DISCOUNT_MIN_SUBTOTAL } from "@/lib/discounts";
 import { touchChoice } from "@/lib/touch-target";
 
 export default function OrderSummary() {
@@ -155,7 +156,7 @@ export default function OrderSummary() {
           )}
           {percentageDiscount > 0 && (
             <div className="flex justify-between text-sm text-green-600 font-semibold">
-              <span>{paymentType === "bank" ? "10%" : "15%"} {t("discount")} (books)</span>
+              <span>10% {t("discount")} (books)</span>
               <span>-₹{percentageDiscount.toFixed(2)}</span>
             </div>
           )}
@@ -172,12 +173,12 @@ export default function OrderSummary() {
           </div>
         </div>
 
-        {subtotal < 5000 && (
+        {subtotal < DISCOUNT_MIN_SUBTOTAL && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 leading-relaxed">
             <p>
               {isRtl
-                ? `ڈسکاؤنٹ حاصل کرنے کے لیے مزید ₹${(5000 - subtotal).toFixed(2)} کا سامان کارٹ میں شامل کریں!`
-                : `Add ₹${(5000 - subtotal).toFixed(2)} more to qualify for special cash/bank discounts!`}
+                ? `₹5,000 یا اس سے زیادہ کی خریداری پر %10 اور قرآن پر ₹25/نقل کی رعایت — مزید ₹${(DISCOUNT_MIN_SUBTOTAL - subtotal).toFixed(2)} شامل کریں`
+                : `10% off books + ₹25/copy on Quran when you spend ₹${DISCOUNT_MIN_SUBTOTAL.toLocaleString()}+ — add ₹${(DISCOUNT_MIN_SUBTOTAL - subtotal).toFixed(2)} more`}
             </p>
           </div>
         )}
@@ -192,21 +193,6 @@ export default function OrderSummary() {
             <span>{t("proceedToCheckout")}</span>
           </Link>
         </Button>
-
-        <div className="space-y-3 pt-4 border-t border-border">
-          <div className={`flex items-center gap-3 text-sm text-muted-foreground ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
-            <Shield className="h-4 w-4 text-green-500 shrink-0" />
-            <span>{t("secureSsl")}</span>
-          </div>
-          <div className={`flex items-center gap-3 text-sm text-muted-foreground ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
-            <Truck className="h-4 w-4 text-blue-500 shrink-0" />
-            <span>{t("freeReturns")}</span>
-          </div>
-          <div className={`flex items-center gap-3 text-sm text-muted-foreground ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
-            <Heart className="h-4 w-4 text-red-500 shrink-0" />
-            <span>{t("support")}</span>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );

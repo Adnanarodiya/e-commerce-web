@@ -273,7 +273,8 @@ export const db = {
     return true;
   },
 
-  async confirmOrderWithCharges(
+  /** Save packaging/courier charges after call — order stays pending (quotation). */
+  async saveOrderQuotation(
     id: string,
     charges: {
       packaging_charge: number;
@@ -282,20 +283,17 @@ export const db = {
       admin_notes?: string;
     }
   ): Promise<boolean> {
-    const now = new Date().toISOString();
     const updates: Partial<Order> = {
       packaging_charge: charges.packaging_charge,
       courier_charge: charges.courier_charge,
       total: charges.total,
       admin_notes: charges.admin_notes ?? null,
-      status: "ready_to_pack",
-      confirmed_at: now,
     };
 
     if (isRealSupabaseConfigured && supabase) {
       const { error } = await supabase.from("orders").update(updates).eq("id", id);
       if (!error) return true;
-      console.error("Supabase confirm order error:", error);
+      console.error("Supabase save quotation error:", error);
       return false;
     }
 
@@ -305,6 +303,43 @@ export const db = {
     dbData.orders[orderIdx] = { ...dbData.orders[orderIdx], ...updates };
     saveMockDB(dbData);
     return true;
+  },
+
+  /** Send a quoted order to the packer queue. */
+  async sendOrderToPacker(id: string): Promise<boolean> {
+    const now = new Date().toISOString();
+    const updates: Partial<Order> = {
+      status: "ready_to_pack",
+      confirmed_at: now,
+    };
+
+    if (isRealSupabaseConfigured && supabase) {
+      const { error } = await supabase.from("orders").update(updates).eq("id", id);
+      if (!error) return true;
+      console.error("Supabase send to packer error:", error);
+      return false;
+    }
+
+    const dbData = getMockDB();
+    const orderIdx = dbData.orders.findIndex((o: Order) => o.id === id);
+    if (orderIdx === -1) return false;
+    dbData.orders[orderIdx] = { ...dbData.orders[orderIdx], ...updates };
+    saveMockDB(dbData);
+    return true;
+  },
+
+  async confirmOrderWithCharges(
+    id: string,
+    charges: {
+      packaging_charge: number;
+      courier_charge: number;
+      total: number;
+      admin_notes?: string;
+    }
+  ): Promise<boolean> {
+    const saved = await this.saveOrderQuotation(id, charges);
+    if (!saved) return false;
+    return this.sendOrderToPacker(id);
   },
 
   async cancelOrder(id: string, reason?: string): Promise<boolean> {

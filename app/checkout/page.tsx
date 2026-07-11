@@ -640,7 +640,7 @@ export default function Checkout() {
                 )}
                 {percentageDiscount > 0 && (
                   <div className="flex justify-between text-sm text-green-600 font-semibold">
-                    <span>{paymentType === "bank" ? "10%" : "15%"} {t("discount")} (books)</span>
+                    <span>10% {t("discount")} (books)</span>
                     <span>-₹{percentageDiscount.toFixed(2)}</span>
                   </div>
                 )}
@@ -676,17 +676,6 @@ export default function Checkout() {
                   `${t("placeOrder")} (₹${total.toFixed(2)})`
                 )}
               </Button>
-
-              <div className="space-y-2 pt-4 border-t border-border text-xs text-muted-foreground">
-                <div className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
-                  <Shield className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                  <span>{t("secureSsl")}</span>
-                </div>
-                <div className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
-                  <Truck className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                  <span>{isRtl ? "فوری تعمیل اور باقاعدہ ترسیل" : "Prompt fulfillment & tracked delivery"}</span>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>

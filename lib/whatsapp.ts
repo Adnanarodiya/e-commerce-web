@@ -27,7 +27,6 @@ export function formatOrderWhatsAppMessage(data: OrderConfirmationData): string 
     "",
     `Status: ${data.statusLabel}`,
     "",
-    "Please find the order confirmation PDF attached.",
     "— Noorani Makatib",
   ].join("\n");
 }

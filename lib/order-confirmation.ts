@@ -1,4 +1,5 @@
 import type { InvoiceData } from "@/lib/invoice";
+import { computeOrderDiscounts } from "@/lib/discounts";
 
 export interface OrderConfirmationData extends InvoiceData {
   courier_charge: number;
@@ -45,13 +46,13 @@ export function deriveOrderDiscounts(
   const quranQty = order.items
     .filter((it) => isQuranById.get(it.book_id) ?? false)
     .reduce((sum, it) => sum + it.quantity, 0);
-  const quranDiscount = Math.min(quranSubtotal, quranQty * 25);
 
-  let percentageDiscount = 0;
-  if (order.subtotal >= 5000 && nonQuranSubtotal > 0) {
-    const rate = order.payment_type === "bank" ? 0.1 : 0.15;
-    percentageDiscount = nonQuranSubtotal * rate;
-  }
+  const { quranDiscount, percentageDiscount } = computeOrderDiscounts({
+    subtotal: order.subtotal,
+    quranSubtotal,
+    quranQty,
+    nonQuranSubtotal,
+  });
 
   return { quranDiscount, percentageDiscount };
 }

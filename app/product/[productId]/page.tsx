@@ -94,7 +94,10 @@ export default function Product() {
   const canAddToCart =
     !isOutOfStock && parsedQuantity >= 1 && !exceedsStock;
 
-  const quantityInputWidth = `${Math.max(2, quantityInput.length || 1) + 1}ch`;
+  const digitCount = Math.max(1, quantityInput.length);
+  const maxDigitSlots = Math.max(5, String(book.stock).length);
+  const quantityInputWidth = `calc(${Math.min(digitCount, maxDigitSlots)}ch + 1.75rem)`;
+  const quantityInputMaxWidth = `calc(${maxDigitSlots}ch + 1.75rem)`;
 
   const setQuantityValue = (value: number) => {
     const next = Math.max(1, value);
@@ -251,8 +254,12 @@ export default function Product() {
                       onBlur={handleQuantityBlur}
                       aria-label={isRtl ? "تعداد" : "Quantity"}
                       aria-invalid={exceedsStock}
-                      className="min-h-[36px] sm:h-10 min-w-[2.5rem] max-w-[12rem] border-0 bg-transparent px-2 text-center font-medium tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      style={{ width: quantityInputWidth }}
+                      className="min-h-[36px] sm:h-10 shrink-0 border-0 bg-transparent px-2 text-center text-base font-medium tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      style={{
+                        width: quantityInputWidth,
+                        minWidth: "calc(2ch + 1.75rem)",
+                        maxWidth: quantityInputMaxWidth,
+                      }}
                     />
                     <Button
                       variant="ghost"
@@ -350,9 +357,6 @@ export default function Product() {
           </div>
         </div>
       </div>
-
-      <Features />
-
       <RelatedProducts product={relatedProduct} />
     </div>
   );
