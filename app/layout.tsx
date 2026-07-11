@@ -84,7 +84,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${montserrat.variable} ${merriweather.variable} ${sourceCodePro.variable} font-sans antialiased flex flex-col min-h-screen`}
+        className={`${montserrat.variable} ${merriweather.variable} ${sourceCodePro.variable} font-sans antialiased flex flex-col min-h-screen overflow-x-hidden min-w-0`}
       >
         <SerwistProvider swUrl="/serwist/sw.js">
           <LanguageProvider>

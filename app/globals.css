@@ -168,7 +168,10 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans overflow-x-hidden min-w-0;
+  }
+  html {
+    @apply overflow-x-hidden;
   }
 }
 

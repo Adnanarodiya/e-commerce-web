@@ -335,27 +335,34 @@ export default function Checkout() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className={`mb-8 flex items-center justify-between ${isRtl ? "flex-row-reverse" : ""}`}>
-        <div className="text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
-          <h1 className="text-3xl font-bold text-foreground">{t("checkout")}</h1>
+    <div className="w-full max-w-full overflow-x-hidden">
+      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 min-w-0">
+      <div
+        className={`mb-6 sm:mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0 ${isRtl ? "sm:flex-row-reverse" : ""}`}
+      >
+        <div className="min-w-0 text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("checkout")}</h1>
         </div>
-        <Button variant="ghost" asChild className="text-muted-foreground hover:text-foreground">
+        <Button
+          variant="ghost"
+          asChild
+          className="text-muted-foreground hover:text-foreground self-start sm:self-auto shrink-0"
+        >
           <Link href="/cart" className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 shrink-0" />
             <span>{t("backToCart")}</span>
           </Link>
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid lg:grid-cols-3 gap-8">
+      <form onSubmit={handleSubmit} className="grid lg:grid-cols-3 gap-6 lg:gap-8 min-w-0">
         {/* Checkout Forms (Shipping & Payment) */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-start">{t("shippingDetails")}</CardTitle>
+        <div className="lg:col-span-2 space-y-6 min-w-0">
+          <Card className="min-w-0 overflow-hidden">
+            <CardHeader className="p-4 sm:p-6 pb-4">
+              <CardTitle className="text-base sm:text-lg font-semibold text-start">{t("shippingDetails")}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+            <CardContent className="space-y-4 p-4 sm:p-6 pt-0 min-w-0" style={{ direction: isRtl ? "rtl" : "ltr" }}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1 text-start">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
@@ -491,14 +498,14 @@ export default function Checkout() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
-              <CardTitle className={`text-lg font-semibold flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
-                <CreditCard className="h-5 w-5 text-primary" />
+          <Card className="min-w-0 overflow-hidden">
+            <CardHeader className="text-start p-4 sm:p-6 pb-4" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+              <CardTitle className={`text-base sm:text-lg font-semibold flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
+                <CreditCard className="h-5 w-5 text-primary shrink-0" />
                 <span>{t("paymentMethod")}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6 text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+            <CardContent className="space-y-6 text-start p-4 sm:p-6 pt-0 min-w-0" style={{ direction: isRtl ? "rtl" : "ltr" }}>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -594,16 +601,16 @@ export default function Checkout() {
         </div>
 
         {/* Right Column Order Summary */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-start">{isRtl ? "آپ کا آرڈر" : "Your Order"}</CardTitle>
+        <div className="lg:col-span-1 space-y-6 min-w-0">
+          <Card className="min-w-0 overflow-hidden">
+            <CardHeader className="p-4 sm:p-6 pb-4">
+              <CardTitle className="text-base sm:text-lg font-semibold text-start">{isRtl ? "آپ کا آرڈر" : "Your Order"}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-start" style={{ direction: isRtl ? "rtl" : "ltr" }}>
+            <CardContent className="space-y-4 text-start p-4 sm:p-6 pt-0 min-w-0" style={{ direction: isRtl ? "rtl" : "ltr" }}>
               {/* Product items in checkout */}
-              <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
+              <div className="space-y-4 max-h-[250px] overflow-y-auto overflow-x-hidden pr-1 min-w-0">
                 {cart.map((item) => (
-                  <div key={item.id} className={`flex gap-3 text-sm ${isRtl ? "flex-row-reverse" : ""}`}>
+                  <div key={item.id} className={`flex gap-3 text-sm min-w-0 ${isRtl ? "flex-row-reverse" : ""}`}>
                     <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-border">
                       <BookImage
                         src={item.image}
@@ -613,11 +620,11 @@ export default function Checkout() {
                         className="object-cover"
                       />
                     </div>
-                    <div className="flex-grow min-w-0">
-                      <h4 className="font-medium text-foreground truncate">{item.name}</h4>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-foreground line-clamp-2 leading-snug">{item.name}</h4>
                       <p className="text-xs text-muted-foreground">{t("qty")}: {item.quantity}</p>
                     </div>
-                    <span className="font-semibold text-foreground flex-shrink-0">
+                    <span className="font-semibold text-foreground flex-shrink-0 tabular-nums">
                       ₹{(item.price * item.quantity).toFixed(2)}
                     </span>
                   </div>
@@ -627,30 +634,30 @@ export default function Checkout() {
               <Separator />
 
               {/* Cost Summary */}
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>{t("subtotal")}</span>
-                  <span className="font-medium text-foreground">₹{subtotal.toFixed(2)}</span>
+              <div className="space-y-2 text-sm min-w-0">
+                <div className="flex justify-between gap-3 min-w-0">
+                  <span className="text-muted-foreground">{t("subtotal")}</span>
+                  <span className="font-medium text-foreground tabular-nums shrink-0">₹{subtotal.toFixed(2)}</span>
                 </div>
                 {quranDiscount > 0 && (
-                  <div className="flex justify-between text-sm text-emerald-600 font-semibold">
-                    <span>Quran discount (₹25/copy)</span>
-                    <span>-₹{quranDiscount.toFixed(2)}</span>
+                  <div className="flex justify-between gap-3 text-sm text-emerald-600 font-semibold min-w-0">
+                    <span className="min-w-0 break-words">Quran discount (₹25/copy)</span>
+                    <span className="tabular-nums shrink-0">-₹{quranDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 {percentageDiscount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600 font-semibold">
-                    <span>10% {t("discount")} (books)</span>
-                    <span>-₹{percentageDiscount.toFixed(2)}</span>
+                  <div className="flex justify-between gap-3 text-sm text-green-600 font-semibold min-w-0">
+                    <span className="min-w-0 break-words">10% {t("discount")} (books)</span>
+                    <span className="tabular-nums shrink-0">-₹{percentageDiscount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed break-words">
                   <p>{t("shippingCallNotice")}</p>
                 </div>
                 <Separator className="my-2" />
-                <div className="flex justify-between text-base font-semibold">
+                <div className="flex justify-between gap-3 text-base font-semibold min-w-0">
                   <span>{t("total")}</span>
-                  <span className="font-bold text-primary">₹{total.toFixed(2)}</span>
+                  <span className="font-bold text-primary tabular-nums shrink-0">₹{total.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -680,6 +687,7 @@ export default function Checkout() {
           </Card>
         </div>
       </form>
+      </div>
     </div>
   );
 }

@@ -108,7 +108,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<"day" | "month" | "year">("month");
   const [reorderAmount, setReorderAmount] = useState<Record<number, number>>({});
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("orders");
   const [statementRange, setStatementRange] = useState<"today" | "week" | "month" | "year" | "all">("today");
   const [statementMode, setStatementMode] = useState<"bank" | "cash">("bank");
 
