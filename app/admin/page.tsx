@@ -318,8 +318,6 @@ export default function AdminDashboard() {
     shareOrderOnWhatsApp({
       phone: order.customer_phone,
       data,
-      qrCodeUrl:
-        order.payment_type === "bank" ? upiSettings.qr_code_url : undefined,
     });
     setToast({
       message: `WhatsApp opened for ${order.customer_phone}`,
@@ -1832,22 +1830,6 @@ export default function AdminDashboard() {
               <span className="font-semibold text-slate-500">Payment:</span>{" "}
               {whatsappQuotationOrder.payment_type === "bank" ? "Bank / UPI" : "Cash"}
             </p>
-            {whatsappQuotationOrder.payment_type === "bank" && (
-              <div className="pt-2 flex items-center gap-3">
-                <div className="relative w-14 h-14 rounded-lg border border-slate-200 bg-white overflow-hidden shrink-0">
-                  <Image
-                    src={upiSettings.qr_code_url}
-                    alt="UPI QR"
-                    fill
-                    className="object-contain p-1"
-                    sizes="56px"
-                  />
-                </div>
-                <p className="text-slate-600 leading-snug">
-                  Opens WhatsApp directly to this customer&apos;s number with UPI details (and QR link if your QR is a public https URL).
-                </p>
-              </div>
-            )}
             <p className="text-slate-500 pt-1">{t("whatsappQuotationHint")}</p>
           </div>
         ) : null}
