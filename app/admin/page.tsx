@@ -15,12 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   TrendingUp, BarChart3, BookOpen,
-  Settings, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, PackageCheck, HandCoins, MessageCircle
+  Settings, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, PackageCheck, HandCoins, MessageCircle, Search
 } from "lucide-react";
 import Image from "next/image";
-import { downloadInvoicePdf, downloadOrderConfirmationPdf } from "@/lib/pdf-download";
+import { downloadInvoicePdf, downloadOrderConfirmationPdf, downloadStatementPdf } from "@/lib/pdf-download";
 import { buildOrderConfirmationData } from "@/lib/order-confirmation";
-import { openWhatsAppChat, formatOrderWhatsAppMessage } from "@/lib/whatsapp";
+import { shareOrderOnWhatsApp } from "@/lib/whatsapp";
 import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
 import {
   stockValuation,
@@ -32,6 +32,11 @@ import {
   orderCourierCharge,
   isConfirmedForRevenue,
 } from "@/lib/profit";
+import {
+  buildCostByBookId,
+  buildStatementRow,
+  sumStatementRows,
+} from "@/lib/statement";
 import MobileSheet from "@/components/ui/MobileSheet";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import StockAlertCards from "@/components/admin/StockAlertCards";
@@ -111,6 +116,9 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("orders");
   const [statementRange, setStatementRange] = useState<"today" | "week" | "month" | "year" | "all">("today");
   const [statementMode, setStatementMode] = useState<"bank" | "cash">("bank");
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [ordersSearch, setOrdersSearch] = useState("");
+  const [downloadingStatement, setDownloadingStatement] = useState(false);
 
   // Quotation modal (packaging + courier charges)
   const [callModal, setCallModal] = useState<Order | null>(null);
@@ -271,8 +279,14 @@ export default function AdminDashboard() {
 
   const totalEarnings = bankEarnings + cashEarnings;
   const periodGrossProfit = sumGrossProfit(filteredOrders, books);
-  const profitMarginPct =
-    totalEarnings > 0 ? Math.round((periodGrossProfit / totalEarnings) * 100) : 0;
+  const bankProfit = sumGrossProfit(
+    confirmedInPeriod.filter((o) => o.payment_type === "bank"),
+    books
+  );
+  const cashProfit = sumGrossProfit(
+    confirmedInPeriod.filter((o) => o.payment_type === "cash"),
+    books
+  );
 
   // Actions
   const getQuranMap = () => {
@@ -299,10 +313,14 @@ export default function AdminDashboard() {
     Math.max(0, parseFloat(chargePackaging) || 0) +
     Math.max(0, parseFloat(chargeCourier) || 0);
 
-  const shareOrderOnWhatsApp = (order: Order) => {
+  const shareOrderOnWhatsAppChat = (order: Order) => {
     const data = buildConfirmation(order);
-    const message = formatOrderWhatsAppMessage(data);
-    openWhatsAppChat(order.customer_phone, message);
+    shareOrderOnWhatsApp({
+      phone: order.customer_phone,
+      data,
+      qrCodeUrl:
+        order.payment_type === "bank" ? upiSettings.qr_code_url : undefined,
+    });
     setToast({
       message: `WhatsApp opened for ${order.customer_phone}`,
       visible: true,
@@ -355,17 +373,8 @@ export default function AdminDashboard() {
   const handleWhatsAppQuotationConfirm = () => {
     if (!whatsappQuotationOrder) return;
     const order = whatsappQuotationOrder;
-    const data = buildConfirmation(order);
-    const message = formatOrderWhatsAppMessage(data);
-
-    setSharingWhatsApp(true);
     setWhatsappQuotationOrder(null);
-    openWhatsAppChat(order.customer_phone, message);
-    setToast({
-      message: `WhatsApp opened for ${order.customer_phone}`,
-      visible: true,
-    });
-    setSharingWhatsApp(false);
+    shareOrderOnWhatsAppChat(order);
   };
 
   const handleConfirmOrderToPacker = async () => {
@@ -618,6 +627,93 @@ export default function AdminDashboard() {
 
   // Admin View
   const pendingOrders = orders.filter(o => o.status === "pending");
+  const ordersSearchQuery = ordersSearch.trim().toLowerCase();
+  const matchesOrderId = (order: Order) =>
+    !ordersSearchQuery || order.id.toLowerCase().includes(ordersSearchQuery);
+
+  const filteredPendingOrders = pendingOrders.filter(matchesOrderId);
+  const filteredReadyToPack = orders.filter(
+    (o) => o.status === "ready_to_pack" && matchesOrderId(o)
+  );
+  const filteredCancelled = orders.filter(
+    (o) => o.status === "cancelled" && matchesOrderId(o)
+  );
+  const filteredOrdersForPackedPanel = ordersSearchQuery
+    ? orders.filter((o) => o.status !== "packed" || matchesOrderId(o))
+    : orders;
+
+  const inventorySearchQuery = inventorySearch.trim().toLowerCase();
+  const filteredBooks = !inventorySearchQuery
+    ? books
+    : books.filter(
+        (b) =>
+          b.name_en.toLowerCase().includes(inventorySearchQuery) ||
+          b.name_ur.toLowerCase().includes(inventorySearchQuery)
+      );
+
+  const statementRangeLabels: Record<typeof statementRange, string> = {
+    today: "Today",
+    week: "1 Week",
+    month: "1 Month",
+    year: "1 Year",
+    all: "All Time",
+  };
+
+  const getStatementRows = () => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    const inRange = (dateStr: string) => {
+      const d = new Date(dateStr);
+      if (statementRange === "all") return true;
+      if (statementRange === "today") return d.toDateString() === now.toDateString();
+      if (statementRange === "week") return d >= weekStart;
+      if (statementRange === "month") return d >= monthStart;
+      if (statementRange === "year") return d >= yearStart;
+      return true;
+    };
+
+    const costByBookId = buildCostByBookId(books);
+    return orders
+      .filter(
+        (o) =>
+          o.payment_type === (statementMode === "bank" ? "bank" : "cash") &&
+          isConfirmedForRevenue(o.status) &&
+          inRange(o.created_at)
+      )
+      .sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      .map((o) => buildStatementRow(o, costByBookId));
+  };
+
+  const handleDownloadStatement = async () => {
+    const rows = getStatementRows();
+    if (rows.length === 0) {
+      setToast({ message: "No transactions to download for this filter", visible: true });
+      return;
+    }
+    setDownloadingStatement(true);
+    try {
+      await downloadStatementPdf({
+        mode: statementMode,
+        rangeLabel: statementRangeLabels[statementRange],
+        upiId: upiSettings.upi_id,
+        generatedAt: new Date().toLocaleString(),
+        rows,
+      });
+      setToast({ message: "Statement PDF downloaded", visible: true });
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Failed to download statement PDF", visible: true });
+    } finally {
+      setDownloadingStatement(false);
+    }
+  };
 
   const tabs: {
     id: string;
@@ -705,10 +801,10 @@ export default function AdminDashboard() {
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-muted-foreground uppercase">Gross Profit</p>
                       <h3 className="text-xl sm:text-2xl font-bold mt-1 text-emerald-600 tabular-nums">
-                        {formatRupee(periodGrossProfit)}
+                        {formatRupee(periodGrossProfit, 2)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        {profitMarginPct}% margin on book sales ({timeFilter})
+                        Profit split · Bank {formatRupee(bankProfit, 2)} · Cash {formatRupee(cashProfit, 2)}
                       </p>
                     </div>
                     <HandCoins className="h-9 w-9 shrink-0 text-emerald-600 bg-emerald-50 p-1.5 rounded-lg" />
@@ -722,10 +818,10 @@ export default function AdminDashboard() {
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-muted-foreground uppercase">Total Revenue</p>
                       <h3 className="text-xl sm:text-2xl font-bold mt-1 text-purple-600 tabular-nums">
-                        {formatRupee(totalEarnings)}
+                        {formatRupee(totalEarnings, 2)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
-                        Book sales only · Bank {formatRupee(bankEarnings)} · Cash {formatRupee(cashEarnings)}
+                        Book sales only · Bank {formatRupee(bankEarnings, 2)} · Cash {formatRupee(cashEarnings, 2)}
                       </p>
                     </div>
                     <BarChart3 className="h-9 w-9 shrink-0 text-purple-500 bg-purple-50 p-1.5 rounded-lg" />
@@ -756,7 +852,7 @@ export default function AdminDashboard() {
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-muted-foreground uppercase">Bank Revenue</p>
                       <h3 className="text-xl sm:text-2xl font-bold mt-1 text-blue-600 tabular-nums">
-                        {formatRupee(bankEarnings)}
+                        {formatRupee(bankEarnings, 2)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
                         Book sales via Bank / UPI
@@ -773,7 +869,7 @@ export default function AdminDashboard() {
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-muted-foreground uppercase">Cash Revenue</p>
                       <h3 className="text-xl sm:text-2xl font-bold mt-1 text-green-600 tabular-nums">
-                        {formatRupee(cashEarnings)}
+                        {formatRupee(cashEarnings, 2)}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-2 font-semibold">
                         Book sales via cash on delivery
@@ -909,21 +1005,37 @@ export default function AdminDashboard() {
         {/* Tab 2: Orders List & Ready to Pack */}
         {activeTab === "orders" && (
           <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                value={ordersSearch}
+                onChange={(e) => setOrdersSearch(e.target.value)}
+                placeholder="Search by order ID (e.g. NM-988427)…"
+                className="pl-9 h-11 rounded-xl bg-white"
+              />
+            </div>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg font-bold">New & Pending Orders</CardTitle>
                 <CardDescription>Verify payment and details, then assign to the packing team.</CardDescription>
               </CardHeader>
               <CardContent>
-                {pendingOrders.length === 0 ? (
+                {filteredPendingOrders.length === 0 ? (
                   <div className="p-12 text-center border-dashed border-2">
                     <div className="text-6xl mb-4">🎉</div>
-                    <h3 className="text-lg font-bold text-foreground">No pending orders</h3>
-                    <p className="text-muted-foreground text-sm mt-1">All incoming orders have been assigned to packer or completed.</p>
+                    <h3 className="text-lg font-bold text-foreground">
+                      {ordersSearchQuery ? "No matching pending orders" : "No pending orders"}
+                    </h3>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      {ordersSearchQuery
+                        ? "Try a different order ID."
+                        : "All incoming orders have been assigned to packer or completed."}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {pendingOrders.map(order => (
+                    {filteredPendingOrders.map(order => (
                       <div
                         key={order.id}
                         className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
@@ -1026,19 +1138,17 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            {orders.filter((o) => o.status === "ready_to_pack").length > 0 && (
+            {filteredReadyToPack.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-md font-bold">With Packer</CardTitle>
                   <CardDescription>Orders waiting to be packed</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {orders
-                    .filter((o) => o.status === "ready_to_pack")
-                    .map((order) => (
+                  {filteredReadyToPack.map((order) => (
                       <div
                         key={order.id}
-                        className="rounded-xl border border-orange-200 bg-white shadow-sm overflow-hidden"
+                        className="rounded-xl border border-red-200 bg-white shadow-sm overflow-hidden"
                       >
                         <div className="p-4 space-y-3">
                           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -1054,40 +1164,43 @@ export default function AdminDashboard() {
                               </a>
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
-                              <Badge className="bg-orange-500 text-white text-[10px]">With Packer</Badge>
+                              <Badge className="bg-red-500 text-white text-[10px]">To Pack</Badge>
                               <span className="text-[10px] font-mono text-muted-foreground">{order.id}</span>
+                              <span className="text-lg font-bold text-red-600 tabular-nums">
+                                {formatRupee(order.total, 2)}
+                              </span>
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2 text-[11px]">
-                            <div className="rounded-lg bg-orange-50/60 border border-orange-100 px-3 py-2">
+                            <div className="rounded-lg bg-red-50/60 border border-red-100 px-3 py-2">
                               <span className="text-muted-foreground block mb-0.5">Products</span>
                               <span className="font-semibold tabular-nums text-slate-900">
                                 ₹{Math.max(0, order.subtotal - order.discount).toFixed(2)}
                               </span>
                             </div>
-                            <div className="rounded-lg bg-orange-50/60 border border-orange-100 px-3 py-2">
+                            <div className="rounded-lg bg-red-50/60 border border-red-100 px-3 py-2">
                               <span className="text-muted-foreground block mb-0.5">Packaging</span>
                               <span className="font-semibold tabular-nums text-slate-900">
                                 ₹{order.packaging_charge.toFixed(2)}
                               </span>
                             </div>
-                            <div className="rounded-lg bg-orange-50/60 border border-orange-100 px-3 py-2">
+                            <div className="rounded-lg bg-red-50/60 border border-red-100 px-3 py-2">
                               <span className="text-muted-foreground block mb-0.5">Courier</span>
                               <span className="font-semibold tabular-nums text-slate-900">
                                 ₹{(order.courier_charge ?? 0).toFixed(2)}
                               </span>
                             </div>
-                            <div className="rounded-lg bg-orange-50/60 border border-orange-100 px-3 py-2">
+                            <div className="rounded-lg bg-red-50/60 border border-red-100 px-3 py-2">
                               <span className="text-muted-foreground block mb-0.5">Total</span>
-                              <span className="font-bold text-primary tabular-nums">
+                              <span className="font-bold text-red-600 tabular-nums">
                                 ₹{order.total.toFixed(2)}
                               </span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="border-t border-orange-100 bg-orange-50/30 px-4 py-4">
+                        <div className="border-t border-red-100 bg-red-50/30 px-4 py-4">
                           <div className="flex flex-col gap-2">
                             <Button
                               variant="outline"
@@ -1101,7 +1214,7 @@ export default function AdminDashboard() {
                             <Button
                               size="sm"
                               className="w-full text-xs font-semibold bg-green-600 hover:bg-green-700 text-white"
-                              onClick={() => shareOrderOnWhatsApp(order)}
+                              onClick={() => shareOrderOnWhatsAppChat(order)}
                             >
                               <MessageCircle className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                               {t("shareWhatsApp")}
@@ -1114,16 +1227,14 @@ export default function AdminDashboard() {
               </Card>
             )}
 
-            {orders.filter((o) => o.status === "cancelled").length > 0 && (
+            {filteredCancelled.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-md font-bold text-red-700">{t("orderCancelled")}</CardTitle>
                   <CardDescription>Cancelled orders — stock has been restored</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-xs">
-                  {orders
-                    .filter((o) => o.status === "cancelled")
-                    .map((order) => (
+                  {filteredCancelled.map((order) => (
                       <div key={order.id} className="flex justify-between items-center border border-red-100 p-3 bg-red-50/40 rounded-lg">
                         <div>
                           <span className="font-bold">{order.customer_name}</span>
@@ -1146,7 +1257,7 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <PackedOrdersPanel
-                  orders={orders}
+                  orders={filteredOrdersForPackedPanel}
                   onConfirmPickup={handleConfirmPickup}
                   onDownloadBill={(order) => handleDownloadBill(order as Order)}
                   confirmingId={confirmingPickupId}
@@ -1159,14 +1270,26 @@ export default function AdminDashboard() {
         {/* Tab 3: Statement (Cash + Bank ledger audit) */}
         {activeTab === "statement" && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <ReceiptText className="h-5 w-5" />
-                Financial Statement
-              </CardTitle>
-              <CardDescription>
-                Full payment audit — customer paid vs what you earned (books only). Packaging &amp; courier shown separately.
-              </CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <ReceiptText className="h-5 w-5" />
+                  Financial Statement
+                </CardTitle>
+                <CardDescription>
+                  Customer paid vs packaging / courier, what you earned from books, and profit after buy cost.
+                </CardDescription>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full sm:w-auto shrink-0"
+                onClick={handleDownloadStatement}
+                disabled={downloadingStatement}
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                {downloadingStatement ? "Preparing PDF…" : "Download PDF"}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Range filter */}
@@ -1220,38 +1343,8 @@ export default function AdminDashboard() {
 
               {/* Statement table */}
               {(() => {
-                const now = new Date();
-                const weekStart = new Date(now);
-                weekStart.setDate(now.getDate() - now.getDay());
-                weekStart.setHours(0, 0, 0, 0);
-                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                const yearStart = new Date(now.getFullYear(), 0, 1);
-
-                const inRange = (dateStr: string) => {
-                  const d = new Date(dateStr);
-                  if (statementRange === "all") return true;
-                  if (statementRange === "today") return d.toDateString() === now.toDateString();
-                  if (statementRange === "week") return d >= weekStart;
-                  if (statementRange === "month") return d >= monthStart;
-                  if (statementRange === "year") return d >= yearStart;
-                  return true;
-                };
-
-                const rows = orders
-                  .filter(
-                    (o) =>
-                      o.payment_type === (statementMode === "bank" ? "bank" : "cash") &&
-                      isConfirmedForRevenue(o.status) &&
-                      inRange(o.created_at)
-                  )
-                  .sort(
-                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                  );
-
-                const totalPaid = rows.reduce((sum, o) => sum + o.total, 0);
-                const totalBooks = rows.reduce((sum, o) => sum + orderProductRevenue(o), 0);
-                const totalPackaging = rows.reduce((sum, o) => sum + orderPackagingCharge(o), 0);
-                const totalCourier = rows.reduce((sum, o) => sum + orderCourierCharge(o), 0);
+                const rows = getStatementRows();
+                const totals = sumStatementRows(rows);
 
                 if (rows.length === 0) {
                   return (
@@ -1263,79 +1356,76 @@ export default function AdminDashboard() {
 
                 return (
                   <div className="border rounded-lg overflow-x-auto">
-                    <table className="w-full text-xs sm:text-sm min-w-[640px]">
+                    <table className="w-full text-xs sm:text-sm min-w-[720px]">
                       <thead className="bg-muted/50 text-muted-foreground">
                         <tr>
                           <th className="text-left font-bold p-3 whitespace-nowrap">Date</th>
                           <th className="text-left font-bold p-3 whitespace-nowrap">Order ID</th>
                           <th className="text-left font-bold p-3 whitespace-nowrap">Customer</th>
-                          {statementMode === "bank" && (
-                            <th className="text-left font-bold p-3 whitespace-nowrap">UPI ID</th>
-                          )}
-                          <th className="text-right font-bold p-3 whitespace-nowrap">Books</th>
+                          <th className="text-right font-bold p-3 whitespace-nowrap">Customer Paid</th>
                           <th className="text-right font-bold p-3 whitespace-nowrap">Packaging</th>
                           <th className="text-right font-bold p-3 whitespace-nowrap">Courier</th>
-                          <th className="text-right font-bold p-3 whitespace-nowrap">Customer Paid</th>
-                          <th className="text-right font-bold p-3 whitespace-nowrap text-emerald-700">Earned</th>
+                          <th className="text-right font-bold p-3 whitespace-nowrap">Total Earn</th>
+                          <th className="text-right font-bold p-3 whitespace-nowrap text-emerald-700">Profit</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map((order) => {
-                          const booksAmt = orderProductRevenue(order);
-                          const packAmt = orderPackagingCharge(order);
-                          const courierAmt = orderCourierCharge(order);
-                          return (
-                          <tr key={order.id} className="border-t hover:bg-muted/30">
+                        {rows.map((row) => (
+                          <tr key={row.id} className="border-t hover:bg-muted/30">
                             <td className="p-3 whitespace-nowrap text-muted-foreground">
-                              {new Date(order.created_at).toLocaleDateString(undefined, {
+                              {new Date(row.created_at).toLocaleDateString(undefined, {
                                 year: "numeric",
                                 month: "short",
                                 day: "2-digit",
                               })}
                             </td>
-                            <td className="p-3 font-bold text-slate-700 whitespace-nowrap">{order.id}</td>
-                            <td className="p-3 whitespace-nowrap">{order.customer_name}</td>
-                            {statementMode === "bank" && (
-                              <td className="p-3 text-blue-700 font-mono text-[11px] whitespace-nowrap">
-                                {upiSettings.upi_id}
-                              </td>
-                            )}
-                            <td className="p-3 text-right tabular-nums whitespace-nowrap">
-                              ₹{booksAmt.toFixed(2)}
-                            </td>
-                            <td className="p-3 text-right tabular-nums whitespace-nowrap text-muted-foreground">
-                              ₹{packAmt.toFixed(2)}
-                            </td>
-                            <td className="p-3 text-right tabular-nums whitespace-nowrap text-muted-foreground">
-                              ₹{courierAmt.toFixed(2)}
-                            </td>
+                            <td className="p-3 font-bold text-slate-700 whitespace-nowrap font-mono">{row.id}</td>
+                            <td className="p-3 whitespace-nowrap">{row.customer_name}</td>
                             <td className={`p-3 text-right font-bold tabular-nums whitespace-nowrap ${statementMode === "bank" ? "text-blue-600" : "text-green-600"}`}>
-                              ₹{order.total.toFixed(2)}
+                              ₹{row.customerPaid.toFixed(2)}
+                            </td>
+                            <td className="p-3 text-right tabular-nums whitespace-nowrap text-muted-foreground">
+                              ₹{row.packaging.toFixed(2)}
+                            </td>
+                            <td className="p-3 text-right tabular-nums whitespace-nowrap text-muted-foreground">
+                              ₹{row.courier.toFixed(2)}
+                            </td>
+                            <td className="p-3 text-right font-semibold tabular-nums whitespace-nowrap text-slate-800">
+                              ₹{row.totalEarn.toFixed(2)}
                             </td>
                             <td className="p-3 text-right font-bold tabular-nums whitespace-nowrap text-emerald-700">
-                              ₹{booksAmt.toFixed(2)}
+                              ₹{row.profit.toFixed(2)}
                             </td>
                           </tr>
-                          );
-                        })}
+                        ))}
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 bg-muted/40">
-                          <td className="p-3 font-bold" colSpan={statementMode === "bank" ? 4 : 3}>
+                          <td className="p-3 font-bold" colSpan={3}>
                             Total ({rows.length} transactions)
                           </td>
-                          <td className="p-3 text-right font-bold tabular-nums">₹{totalBooks.toFixed(2)}</td>
-                          <td className="p-3 text-right font-bold tabular-nums text-muted-foreground">₹{totalPackaging.toFixed(2)}</td>
-                          <td className="p-3 text-right font-bold tabular-nums text-muted-foreground">₹{totalCourier.toFixed(2)}</td>
                           <td className={`p-3 text-right font-bold tabular-nums ${statementMode === "bank" ? "text-blue-700" : "text-green-700"}`}>
-                            ₹{totalPaid.toFixed(2)}
+                            ₹{totals.customerPaid.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right font-bold tabular-nums text-muted-foreground">
+                            ₹{totals.packaging.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right font-bold tabular-nums text-muted-foreground">
+                            ₹{totals.courier.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right font-bold tabular-nums">
+                            ₹{totals.totalEarn.toFixed(2)}
                           </td>
                           <td className="p-3 text-right font-bold tabular-nums text-emerald-700">
-                            ₹{totalBooks.toFixed(2)}
+                            ₹{totals.profit.toFixed(2)}
                           </td>
                         </tr>
                       </tfoot>
                     </table>
+                    <p className="text-[11px] text-muted-foreground p-3 border-t bg-slate-50/80">
+                      Customer Paid = books + packaging + courier. Total Earn = book sales after discount.
+                      Profit = Total Earn − book buy cost.
+                    </p>
                   </div>
                 );
               })()}
@@ -1358,9 +1448,23 @@ export default function AdminDashboard() {
                 Add New Book
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={inventorySearch}
+                  onChange={(e) => setInventorySearch(e.target.value)}
+                  placeholder="Search books by name…"
+                  className="pl-9 h-11 rounded-xl"
+                />
+              </div>
+              {filteredBooks.length === 0 ? (
+                <div className="p-10 text-center border border-dashed rounded-xl text-sm text-muted-foreground">
+                  No books match “{inventorySearch.trim()}”.
+                </div>
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {books.map(book => {
+                {filteredBooks.map(book => {
                   const { margin, percent } = unitMargin(book.cost_price ?? 0, book.price);
                   return (
                   <Card key={book.id} className="border flex flex-col justify-between">
@@ -1419,6 +1523,7 @@ export default function AdminDashboard() {
                   );
                 })}
               </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -1723,6 +1828,26 @@ export default function AdminDashboard() {
               <span className="font-semibold text-slate-500">Total:</span>{" "}
               ₹{whatsappQuotationOrder.total.toFixed(2)}
             </p>
+            <p>
+              <span className="font-semibold text-slate-500">Payment:</span>{" "}
+              {whatsappQuotationOrder.payment_type === "bank" ? "Bank / UPI" : "Cash"}
+            </p>
+            {whatsappQuotationOrder.payment_type === "bank" && (
+              <div className="pt-2 flex items-center gap-3">
+                <div className="relative w-14 h-14 rounded-lg border border-slate-200 bg-white overflow-hidden shrink-0">
+                  <Image
+                    src={upiSettings.qr_code_url}
+                    alt="UPI QR"
+                    fill
+                    className="object-contain p-1"
+                    sizes="56px"
+                  />
+                </div>
+                <p className="text-slate-600 leading-snug">
+                  Opens WhatsApp directly to this customer&apos;s number with UPI details (and QR link if your QR is a public https URL).
+                </p>
+              </div>
+            )}
             <p className="text-slate-500 pt-1">{t("whatsappQuotationHint")}</p>
           </div>
         ) : null}

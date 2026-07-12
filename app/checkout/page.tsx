@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, CheckCircle, CreditCard, Shield, Truck, Phone } from "lucide-react";
 import Link from "next/link";
 import BookImage from "@/components/ui/BookImage";
-import Image from "next/image";
 import PincodeField from "@/components/checkout/PincodeField";
 import { touchChoice } from "@/lib/touch-target";
 
@@ -46,14 +45,6 @@ export default function Checkout() {
     zipCode: "",
   });
 
-  // Dynamic QR Code/UPI settings from database
-  const [upiSettings, setUpiSettings] = useState({
-    upi_id: "9426880068@kotak",
-    payee_name: "ADNAN IBADULLAH ARODIYA",
-    qr_code_url: "/images/qr-code.png"
-  });
-
-  const [confirmPaid, setConfirmPaid] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -92,24 +83,6 @@ export default function Checkout() {
     }
   };
 
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        const settings = await db.getSettings();
-        const loaded = { ...upiSettings };
-        settings.forEach(s => {
-          if (s.key === "upi_id") loaded.upi_id = s.value;
-          if (s.key === "payee_name") loaded.payee_name = s.value;
-          if (s.key === "qr_code_url") loaded.qr_code_url = s.value;
-        });
-        setUpiSettings(loaded);
-      } catch (err) {
-        console.error("Failed to load settings:", err);
-      }
-    }
-    loadSettings();
-  }, []);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -143,10 +116,6 @@ export default function Checkout() {
 
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Please enter a valid email address";
-    }
-
-    if (paymentType === "bank" && !confirmPaid) {
-      newErrors.confirmPaid = "Please confirm that you have scanned the QR code and completed the payment";
     }
 
     if (deliveryType !== "in_person") {
@@ -229,7 +198,7 @@ export default function Checkout() {
       courier_charge: 0,
       total: total,
       status: "pending",
-      payment_confirmed: paymentType === "bank" ? confirmPaid : false,
+      payment_confirmed: false,
       created_at: new Date().toISOString()
     };
 
@@ -295,7 +264,7 @@ export default function Checkout() {
           </div>
           <div className="flex justify-between pt-3 border-t border-border/60 text-sm sm:text-base">
             <span className="text-muted-foreground font-medium">
-              {successPaymentType === "cash" ? t("amountToPay") + ":" : t("amountPaid") + ":"}
+              {t("amountToPay")}:
             </span>
             <span className="font-bold text-primary">₹{successTotal.toFixed(2)}</span>
           </div>
@@ -303,11 +272,11 @@ export default function Checkout() {
         
         {successPaymentType === "bank" && (
           <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-start text-xs sm:text-sm text-amber-800" style={{ direction: isRtl ? "rtl" : "ltr" }}>
-            <p className="font-semibold mb-1">{isRtl ? "بینک ٹرانسفر کے بارے میں نوٹ:" : "Note regarding bank transfer:"}</p>
+            <p className="font-semibold mb-1">{isRtl ? "بینک / UPI ادائیگی:" : "Bank / UPI payment:"}</p>
             <p>
-              {isRtl 
-                ? `آپ کے آرڈر پر تب کارروائی کی جائے گی جب ہم تصدیق کر لیں گے کہ آپ کی ادائیگی (کل: ₹${successTotal.toFixed(2)}) ہمارے بینک میں موصول ہو گئی ہے۔ ہم جلد ہی تصدیق کے لیے آپ سے رابطہ کریں گے۔`
-                : `Your order will be processed once we verify the receipt of your payment (total: ₹${successTotal.toFixed(2)}) in our bank. We will contact you shortly to confirm.`}
+              {isRtl
+                ? "چیک آؤٹ پر ادائیگی کی ضرورت نہیں۔ فون پر تصدیق کے بعد ہم واٹس ایپ پر UPI / QR بھیجیں گے۔"
+                : "No payment needed at checkout. After we confirm details on the call, we will send UPI / QR on WhatsApp."}
             </p>
           </div>
         )}
@@ -541,59 +510,9 @@ export default function Checkout() {
                   <p>{t("codDesc")}</p>
                 </div>
               ) : (
-                <div className="space-y-4 animate-in fade-in duration-200">
-                  <div className="p-4 bg-muted/30 border border-border rounded-xl flex flex-col items-center">
-                    <p className="font-semibold text-foreground text-sm sm:text-base text-center mb-3">{t("scanQR")}</p>
-                    <div className="relative w-full max-w-[280px] bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden p-3 flex flex-col items-center">
-                      <Image
-                        src={upiSettings.qr_code_url}
-                        alt="UPI QR Code"
-                        width={240}
-                        height={240}
-                        className="object-contain w-full h-auto rounded-lg"
-                      />
-                    </div>
-                    <div className="mt-4 text-center space-y-1" style={{ direction: "ltr" }}>
-                      <p className="text-sm font-bold text-foreground">
-                        {t("upiId")}: <span className="text-primary select-all">{upiSettings.upi_id}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground font-medium">
-                        {t("payeeName")}: {upiSettings.payee_name}
-                      </p>
-                      <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full inline-block mt-2">
-                        {isRtl ? "ادائیگی کی تفصیل میں اپنا نام یا آرڈر نمبر لکھیں" : "Add Order ID or your name in the payment description note"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className={cn(
-                    "flex items-start gap-3 p-3 border rounded-xl transition-all",
-                    isRtl ? "flex-row-reverse" : "",
-                    confirmPaid ? "bg-primary/5 border-primary/20" : "bg-background border-border"
-                  )}>
-                    <input
-                      type="checkbox"
-                      id="confirmPaid"
-                      checked={confirmPaid}
-                      onChange={(e) => {
-                        setConfirmPaid(e.target.checked);
-                        if (errors.confirmPaid) {
-                          setErrors((prev) => {
-                            const next = { ...prev };
-                            delete next.confirmPaid;
-                            return next;
-                          });
-                        }
-                      }}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer shrink-0"
-                    />
-                    <label htmlFor="confirmPaid" className="text-xs sm:text-sm font-medium text-foreground leading-normal cursor-pointer select-none">
-                      {t("confirmPaid")}
-                    </label>
-                  </div>
-                  {errors.confirmPaid && (
-                    <p className="text-xs text-destructive font-medium text-start">{errors.confirmPaid}</p>
-                  )}
+                <div className="p-4 bg-muted/40 border border-border rounded-xl text-xs sm:text-sm text-muted-foreground leading-relaxed animate-in fade-in duration-200">
+                  <p className="font-medium text-foreground mb-1">{t("bankTransfer")}</p>
+                  <p>{t("bankDesc")}</p>
                 </div>
               )}
             </CardContent>

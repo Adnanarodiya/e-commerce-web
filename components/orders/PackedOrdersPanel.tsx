@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/context/LanguageContext";
+import { formatRupee } from "@/lib/profit";
 import { Check, PackageCheck, Printer, Download } from "lucide-react";
 
 export interface PackedOrderItem {
@@ -69,16 +70,16 @@ export default function PackedOrdersPanel({
   return (
     <div className="space-y-3">
       {packed.map((order) => (
-        <Card key={order.id} className="border border-border">
-          <CardHeader className="py-3 px-4 sm:px-5">
+        <Card key={order.id} className="border border-orange-200">
+          <CardHeader className="py-3 px-4 sm:px-5 bg-orange-50/40">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
               <div className="min-w-0">
                 <CardTitle className="text-sm font-bold">{order.customer_name}</CardTitle>
-                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 font-mono">
                   {order.id} · {order.customer_phone}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5 justify-end">
                 <Badge variant="outline" className="text-[10px] capitalize">
                   {order.delivery_type}
                 </Badge>
@@ -91,10 +92,15 @@ export default function PackedOrdersPanel({
                     {t("pickupPending")}
                   </Badge>
                 )}
+                {typeof order.total === "number" && (
+                  <p className="text-base sm:text-lg font-bold text-orange-600 tabular-nums w-full sm:w-auto text-right">
+                    {formatRupee(order.total, 2)}
+                  </p>
+                )}
               </div>
             </div>
           </CardHeader>
-          <CardContent className="px-4 sm:px-5 pb-4 pt-0 space-y-3 text-xs">
+          <CardContent className="px-4 sm:px-5 pb-4 pt-3 space-y-3 text-xs">
             <div className="bg-muted/40 border border-border p-2.5 space-y-1">
               {order.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between gap-2">

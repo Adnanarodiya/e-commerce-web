@@ -81,3 +81,18 @@ export async function generateOrderConfirmationBlob(
   );
   return pdf(<OrderConfirmationDocument data={data} />).toBlob();
 }
+
+/** Download financial statement PDF for the current filter selection. */
+export async function downloadStatementPdf(
+  data: import("@/lib/statement").StatementPdfData
+): Promise<void> {
+  const { default: StatementDocument } = await import(
+    "@/components/pdf/StatementDocument"
+  );
+  const mode = data.mode === "bank" ? "bank" : "cash";
+  const range = data.rangeLabel.replace(/\s+/g, "-").toLowerCase();
+  await downloadPdf(
+    <StatementDocument data={data} />,
+    `statement-${mode}-${range}.pdf`
+  );
+}

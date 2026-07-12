@@ -32,6 +32,7 @@ export const translations = {
     cod: "Cash on Delivery",
     codDesc: "Pay with cash when your package is delivered. No upfront payment required. We will verify your details and contact you to confirm the delivery.",
     bankTransfer: "Bank Transfer / UPI",
+    bankDesc: "Place your order now — no payment at checkout. After we confirm details on the call, we will send UPI / QR payment details on WhatsApp.",
     scanQR: "Scan QR to Pay via UPI",
     payeeName: "Payee Name",
     upiId: "UPI ID",
@@ -122,7 +123,7 @@ export const translations = {
     whatsappQuotationPrompt:
       "Send the quotation message to {name} at {phone}?",
     whatsappQuotationHint:
-      "Opens wa.me with the customer's number and a pre-filled message (no PDF).",
+      "Opens WhatsApp directly to the order phone number with a pre-filled quotation (no contact picker).",
     cancelOrder: "Cancel Order",
     cancelOrderTitle: "Cancel this order?",
     cancelOrderPrompt: "Stock will be restored. This cannot be undone easily.",
@@ -191,6 +192,7 @@ export const translations = {
     cod: "کیش آن ڈیلیوری",
     codDesc: "پیکیج کی ترسیل کے وقت نقد رقم ادا کریں۔ کسی پیشگی ادائیگی کی ضرورت نہیں ہے۔ ہم آپ کے فراہم کردہ پتے کی تصدیق کے لیے رابطہ کریں گے۔",
     bankTransfer: "بینک ٹرانسفر / یو پی آئی",
+    bankDesc: "ابھی آرڈر دیں — چیک آؤٹ پر ادائیگی نہیں۔ فون پر تفصیلات کی تصدیق کے بعد ہم واٹس ایپ پر UPI / QR بھیجیں گے۔",
     scanQR: "UPI کے ذریعے ادائیگی کے لیے QR کوڈ اسکین کریں",
     payeeName: "وصول کنندہ کا نام",
     upiId: "UPI آئی ڈی",
@@ -281,7 +283,7 @@ export const translations = {
     whatsappQuotationPrompt:
       "کوٹیشن کا پیغام {name} کو {phone} پر بھیجیں؟",
     whatsappQuotationHint:
-      "کسٹمر کے نمبر کے ساتھ wa.me کھلے گا اور پیغام پہلے سے لکھا ہوگا (PDF نہیں)۔",
+      "آرڈر والے فون نمبر پر واٹس ایپ سیدھا کھلے گا — کوٹیشن پہلے سے لکھی ہوگی (کانٹیکٹ فہرست نہیں)۔",
     cancelOrder: "آرڈر منسوخ کریں",
     cancelOrderTitle: "یہ آرڈر منسوخ کریں؟",
     cancelOrderPrompt: "اسٹاک واپس کر دیا جائے گا۔ یہ آسانی سے واپس نہیں ہو سکتا۔",

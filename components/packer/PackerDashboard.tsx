@@ -12,13 +12,16 @@ import { useLanguage } from "@/context/LanguageContext";
 import { setStaffSession } from "@/lib/staff-session";
 import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
 import { db, supabase } from "@/lib/supabase";
-import { Check, LogOut, PackageCheck, Printer } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, LogOut, PackageCheck, Printer, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { touchChoice } from "@/lib/touch-target";
+import { Input } from "@/components/ui/input";
+import { formatRupee } from "@/lib/profit";
 
 interface Order extends PackedOrder {
   customer_address: string;
   payment_confirmed: boolean;
+  total: number;
 }
 
 function toSlipData(order: Order): ShippingSlipData {
@@ -67,6 +70,7 @@ export default function PackerDashboard() {
   const [packingId, setPackingId] = useState<string | null>(null);
   const [confirmingPickupId, setConfirmingPickupId] = useState<string | null>(null);
   const [toast, setToast] = useState({ message: "", visible: false });
+  const [orderSearch, setOrderSearch] = useState("");
 
   const loadData = async () => {
     setLoading(true);
@@ -173,6 +177,26 @@ export default function PackerDashboard() {
     window.location.href = "/packer/login";
   };
 
+  const queueOrders = useMemo(() => {
+    const q = orderSearch.trim().toLowerCase();
+    return orders.filter(
+      (o) =>
+        o.status === "ready_to_pack" &&
+        (!q || o.id.toLowerCase().includes(q))
+    );
+  }, [orders, orderSearch]);
+
+  const packedOrdersForPanel = useMemo(() => {
+    const q = orderSearch.trim().toLowerCase();
+    if (!q) return orders;
+    return orders.filter(
+      (o) => o.status !== "packed" || o.id.toLowerCase().includes(q)
+    );
+  }, [orders, orderSearch]);
+
+  const toPackCount = orders.filter((o) => o.status === "ready_to_pack").length;
+  const packedCount = orders.filter((o) => o.status === "packed").length;
+
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center py-24 sm:py-32 space-y-4">
@@ -181,9 +205,6 @@ export default function PackerDashboard() {
       </div>
     );
   }
-
-  const queueOrders = orders.filter((o) => o.status === "ready_to_pack");
-  const packedCount = orders.filter((o) => o.status === "packed").length;
 
   return (
     <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 max-w-5xl">
@@ -222,23 +243,35 @@ export default function PackerDashboard() {
           onClick={() => setActiveView("queue")}
           className={`flex-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${touchChoice} ${
             activeView === "queue"
-              ? "border-primary text-foreground bg-slate-50"
+              ? "border-red-500 text-foreground bg-red-50/50"
               : "border-transparent text-muted-foreground"
           }`}
         >
-          {t("toPack")} ({queueOrders.length})
+          {t("toPack")}{" "}
+          <span className="font-bold text-red-600 tabular-nums">({toPackCount})</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveView("packed")}
           className={`flex-1 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${touchChoice} ${
             activeView === "packed"
-              ? "border-primary text-foreground bg-slate-50"
+              ? "border-orange-500 text-foreground bg-orange-50/50"
               : "border-transparent text-muted-foreground"
           }`}
         >
-          {t("packedHistory")} ({packedCount})
+          {t("packedHistory")}{" "}
+          <span className="font-bold text-orange-600 tabular-nums">({packedCount})</span>
         </button>
+      </div>
+
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={orderSearch}
+          onChange={(e) => setOrderSearch(e.target.value)}
+          placeholder={isRtl ? "آرڈر آئی ڈی سے تلاش کریں…" : "Search by order ID…"}
+          className="pl-9 h-11 rounded-xl"
+        />
       </div>
 
       {activeView === "queue" ? (
@@ -247,22 +280,33 @@ export default function PackerDashboard() {
             <Card className="p-8 sm:p-12 text-center border-dashed border-2">
               <div className="text-5xl sm:text-6xl mb-4">📦</div>
               <h3 className="text-base sm:text-lg font-bold text-foreground mb-1">
-                {isRtl ? "کوئی پینڈنگ پیکنگ نہیں ہے" : "No orders ready to pack"}
+                {orderSearch.trim()
+                  ? isRtl
+                    ? "کوئی آرڈر نہیں ملا"
+                    : "No matching orders to pack"
+                  : isRtl
+                    ? "کوئی پینڈنگ پیکنگ نہیں ہے"
+                    : "No orders ready to pack"}
               </h3>
             </Card>
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {queueOrders.map((order) => (
-                <Card key={order.id} className="border-2 border-primary/20">
-                  <CardHeader className="bg-primary/5 pb-3 px-4 pt-4">
+                <Card key={order.id} className="border-2 border-red-200">
+                  <CardHeader className="bg-red-50/60 pb-3 px-4 pt-4">
                     <div className="flex justify-between items-start gap-2">
                       <div>
                         <CardTitle className="text-sm font-bold">{order.customer_name}</CardTitle>
-                        <CardDescription className="text-xs">{order.id}</CardDescription>
+                        <CardDescription className="text-xs font-mono">{order.id}</CardDescription>
                       </div>
-                      <Badge variant="outline" className="text-[10px]">
-                        {formatDeliveryType(order.delivery_type)}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <Badge variant="outline" className="text-[10px]">
+                          {formatDeliveryType(order.delivery_type)}
+                        </Badge>
+                        <p className="text-lg font-bold text-red-600 tabular-nums">
+                          {formatRupee(order.total ?? 0, 2)}
+                        </p>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 space-y-3">
@@ -310,7 +354,7 @@ export default function PackerDashboard() {
         </div>
       ) : (
         <PackedOrdersPanel
-          orders={orders}
+          orders={packedOrdersForPanel}
           onConfirmPickup={(orderId) => {
             const order = orders.find((o) => o.id === orderId);
             if (order) setPickupTarget(order);
