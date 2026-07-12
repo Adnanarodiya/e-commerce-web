@@ -169,9 +169,12 @@
   }
   body {
     @apply bg-background text-foreground font-sans overflow-x-hidden min-w-0;
+    touch-action: manipulation;
   }
   html {
     @apply overflow-x-hidden;
+    touch-action: manipulation;
+    -ms-touch-action: manipulation;
   }
 }
 
