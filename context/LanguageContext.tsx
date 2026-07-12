@@ -115,7 +115,7 @@ export const translations = {
     quotationOrder: "Quotation Order",
     confirmOrderTitle: "Confirm this order?",
     confirmOrderPrompt:
-      "Are you sure you want to confirm this order? It will be sent to the packing team.",
+      "Confirm this order to send it to packing. WhatsApp will open with a short confirmation message for the customer.",
     confirmOrderYes: "Yes, confirm order",
     quotationSaved: "Quotation saved",
     orderSentToPacker: "Order sent to packer",
@@ -275,7 +275,7 @@ export const translations = {
     quotationOrder: "کوٹیشن آرڈر",
     confirmOrderTitle: "یہ آرڈر تصدیق کریں؟",
     confirmOrderPrompt:
-      "کیا آپ واقعی یہ آرڈر تصدیق کرنا چاہتے ہیں؟ یہ پیکنگ ٹیم کو بھیج دیا جائے گا۔",
+      "آرڈر تصدیق کر کے پیکنگ کو بھیجیں گے۔ کسٹمر کے لیے واٹس ایپ پر مختصر تصدیقی پیغام کھلے گا۔",
     confirmOrderYes: "ہاں، آرڈر تصدیق کریں",
     quotationSaved: "کوٹیشن محفوظ ہو گئی",
     orderSentToPacker: "آرڈر پیکر کو بھیج دیا گیا",

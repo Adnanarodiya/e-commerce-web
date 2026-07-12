@@ -67,3 +67,33 @@ export function shareOrderOnWhatsApp(options: {
   openWhatsAppChat(options.phone, formatOrderWhatsAppMessage(options.data));
   return "opened";
 }
+
+/** Short status when admin confirms order → ready to pack. */
+export function formatOrderConfirmedWhatsAppMessage(order: {
+  id: string;
+  customer_name: string;
+}): string {
+  return [
+    `Assalamualaikum ${order.customer_name},`,
+    "",
+    `Your order *${order.id}* has been confirmed.`,
+    "It is now ready to pack.",
+    "",
+    "Thank you for ordering with us.",
+    "",
+    "— Noorani Makatib",
+  ].join("\n");
+}
+
+/** Open WhatsApp with the ready-to-pack confirmation status. */
+export function shareOrderConfirmedOnWhatsApp(order: {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+}): "opened" {
+  openWhatsAppChat(
+    order.customer_phone,
+    formatOrderConfirmedWhatsAppMessage(order)
+  );
+  return "opened";
+}

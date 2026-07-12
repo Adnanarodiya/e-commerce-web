@@ -20,7 +20,7 @@ import {
 import Image from "next/image";
 import { downloadInvoicePdf, downloadOrderConfirmationPdf, downloadStatementPdf } from "@/lib/pdf-download";
 import { buildOrderConfirmationData } from "@/lib/order-confirmation";
-import { shareOrderOnWhatsApp } from "@/lib/whatsapp";
+import { shareOrderOnWhatsApp, shareOrderConfirmedOnWhatsApp } from "@/lib/whatsapp";
 import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
 import {
   stockValuation,
@@ -381,19 +381,25 @@ export default function AdminDashboard() {
     try {
       const success = await db.sendOrderToPacker(confirmPackModal.id);
       if (success) {
+        const confirmed = confirmPackModal;
         const updated: Order = {
-          ...confirmPackModal,
+          ...confirmed,
           status: "ready_to_pack",
           confirmed_at: new Date().toISOString(),
         };
         setOrders((prev) =>
-          prev.map((o) => (o.id === confirmPackModal.id ? updated : o))
+          prev.map((o) => (o.id === confirmed.id ? updated : o))
         );
+        setConfirmPackModal(null);
         setToast({
-          message: `${t("orderSentToPacker")} — ${confirmPackModal.id}`,
+          message: `${t("orderSentToPacker")} — ${confirmed.id}`,
           visible: true,
         });
-        setConfirmPackModal(null);
+        shareOrderConfirmedOnWhatsApp({
+          id: confirmed.id,
+          customer_name: confirmed.customer_name,
+          customer_phone: confirmed.customer_phone,
+        });
       } else {
         setToast({ message: "Failed to confirm order", visible: true });
       }
@@ -797,7 +803,7 @@ export default function AdminDashboard() {
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Gross Profit</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Profit</p>
                       <h3 className="text-xl sm:text-2xl font-bold mt-1 text-emerald-600 tabular-nums">
                         {formatRupee(periodGrossProfit, 2)}
                       </h3>
@@ -814,7 +820,7 @@ export default function AdminDashboard() {
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Total Revenue</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Total Income</p>
                       <h3 className="text-xl sm:text-2xl font-bold mt-1 text-purple-600 tabular-nums">
                         {formatRupee(totalEarnings, 2)}
                       </h3>
@@ -848,7 +854,7 @@ export default function AdminDashboard() {
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Bank Revenue</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Bank</p>
                       <h3 className="text-xl sm:text-2xl font-bold mt-1 text-blue-600 tabular-nums">
                         {formatRupee(bankEarnings, 2)}
                       </h3>
@@ -865,7 +871,7 @@ export default function AdminDashboard() {
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">Cash Revenue</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Cash</p>
                       <h3 className="text-xl sm:text-2xl font-bold mt-1 text-green-600 tabular-nums">
                         {formatRupee(cashEarnings, 2)}
                       </h3>
