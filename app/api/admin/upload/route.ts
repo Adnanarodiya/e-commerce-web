@@ -29,12 +29,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid file or bucket" }, { status: 400 });
   }
 
-  if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Only image files are allowed" }, { status: 400 });
+  const isImage = file.type.startsWith("image/");
+  const isPdf = file.type === "application/pdf";
+
+  // QR codes must be images; book covers may be images or PDFs
+  if (bucket === "qr-codes" && !isImage) {
+    return NextResponse.json({ error: "Only image files are allowed for QR codes" }, { status: 400 });
+  }
+  if (bucket === "book-covers" && !isImage && !isPdf) {
+    return NextResponse.json(
+      { error: "Only image or PDF files are allowed for book covers" },
+      { status: 400 }
+    );
   }
 
-  if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "File must be under 5 MB" }, { status: 400 });
+  // PDFs can be larger; images stay under 5 MB, PDFs under 15 MB
+  const maxSize = isPdf ? 15 * 1024 * 1024 : 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    return NextResponse.json(
+      { error: isPdf ? "PDF must be under 15 MB" : "File must be under 5 MB" },
+      { status: 400 }
+    );
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
