@@ -1,7 +1,7 @@
 # Bloom E-commerce Template
 
 A clean and modern **e-commerce template** built with **Next.js 16**, **React 19**, **Tailwind CSS 4**, and **TypeScript**.  
-Perfect for launching stylish, fast storefronts with a great developer experience.
+Perfect for launching stylish, fast storefronts with a great developer experience.,
 
 ---
 
