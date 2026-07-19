@@ -16,7 +16,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Header />
-      <main className="flex-grow min-w-0 overflow-x-hidden">{children}</main>
+      <main className="flex-grow min-w-0 overflow-x-clip">{children}</main>
       <Footer />
     </>
   );

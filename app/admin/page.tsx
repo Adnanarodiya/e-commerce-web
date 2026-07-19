@@ -15,13 +15,18 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   TrendingUp, BarChart3, BookOpen,
-  Settings, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, PackageCheck, HandCoins, MessageCircle, Search
+  Settings, PhoneCall, Check, Truck, Trash2, Plus, Edit2, RotateCw, LogOut, Upload, ReceiptText, Download, Banknote, Wallet, X, Package, PackageCheck, HandCoins, MessageCircle, Search, ImageIcon
 } from "lucide-react";
 import Image from "next/image";
 import { downloadInvoicePdf, downloadOrderConfirmationPdf, downloadStatementPdf } from "@/lib/pdf-download";
 import { buildOrderConfirmationData } from "@/lib/order-confirmation";
-import { shareOrderOnWhatsApp, shareOrderConfirmedOnWhatsApp } from "@/lib/whatsapp";
-import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
+import { shareOrderOnWhatsApp, shareOrderConfirmedOnWhatsApp, shareInvoiceImageOnWhatsApp } from "@/lib/whatsapp";
+import {
+  formatBookWeight,
+  formatDeliveryType,
+  formatOrderItemsSummary,
+  orderItemsTotalWeight,
+} from "@/lib/format-order";
 import {
   stockValuation,
   sumGrossProfit,
@@ -313,6 +318,12 @@ export default function AdminDashboard() {
     callModalProductsTotal +
     Math.max(0, parseFloat(chargePackaging) || 0) +
     Math.max(0, parseFloat(chargeCourier) || 0);
+  const bookWeightById = new Map(
+    books.map((book) => [book.id, Number(book.weight ?? 0)])
+  );
+  const callModalTotalWeight = callModal
+    ? orderItemsTotalWeight(callModal.items, bookWeightById)
+    : 0;
 
   const shareOrderOnWhatsAppChat = (order: Order) => {
     const data = buildConfirmation(order);
@@ -373,20 +384,32 @@ export default function AdminDashboard() {
     if (!whatsappQuotationOrder) return;
     const order = whatsappQuotationOrder;
     setWhatsappQuotationOrder(null);
-    shareOrderOnWhatsAppChat(order);
-
-    const sharedAt = await db.markQuotationShared(order.id);
-    if (sharedAt) {
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === order.id ? { ...o, quotation_shared_at: sharedAt } : o
-        )
-      );
-    } else {
+    setSharingWhatsApp(true);
+    try {
+      shareOrderOnWhatsAppChat(order);
       setToast({
-        message: "WhatsApp opened, but quotation status could not be saved",
+        message: `Quotation opened in WhatsApp for ${order.customer_phone}`,
         visible: true,
       });
+
+      const sharedAt = await db.markQuotationShared(order.id);
+      if (sharedAt) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id ? { ...o, quotation_shared_at: sharedAt } : o
+          )
+        );
+      } else {
+        setToast({
+          message: "WhatsApp opened, but quotation status could not be saved",
+          visible: true,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Could not share quotation image", visible: true });
+    } finally {
+      setSharingWhatsApp(false);
     }
   };
 
@@ -632,6 +655,23 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Invoice generation failed:", err);
       alert("Could not generate invoice. See console for details.");
+    }
+  };
+
+  const handleSendInvoiceImage = async (order: Order) => {
+    try {
+      const data = buildConfirmation(order);
+      const result = await shareInvoiceImageOnWhatsApp(data);
+      setToast({
+        message:
+          result === "shared"
+            ? "Invoice ready to share on WhatsApp"
+            : "Invoice image downloaded — attach it in the WhatsApp chat",
+        visible: true,
+      });
+    } catch (err) {
+      console.error("Invoice image share failed:", err);
+      setToast({ message: "Could not generate invoice image", visible: true });
     }
   };
 
@@ -1240,6 +1280,14 @@ export default function AdminDashboard() {
                               <MessageCircle className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                               {t("shareWhatsApp")}
                             </Button>
+                            <Button
+                              size="sm"
+                              className="w-full text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white"
+                              onClick={() => handleSendInvoiceImage(order)}
+                            >
+                              <ImageIcon className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                              Send Invoice
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -1279,8 +1327,10 @@ export default function AdminDashboard() {
               <CardContent>
                 <PackedOrdersPanel
                   orders={filteredOrdersForPackedPanel}
+                  weightByBookId={bookWeightById}
                   onConfirmPickup={handleConfirmPickup}
                   onDownloadBill={(order) => handleDownloadBill(order as Order)}
+                  onSendInvoice={(order) => handleSendInvoiceImage(order as Order)}
                   confirmingId={confirmingPickupId}
                 />
               </CardContent>
@@ -1752,15 +1802,24 @@ export default function AdminDashboard() {
                 <div className="text-sm text-slate-800 text-right space-y-1">
                   <p className="font-bold">{formatOrderItemsSummary(callModal.items)}</p>
                   <ul className="text-xs text-slate-600 space-y-0.5">
-                    {callModal.items.slice(0, 4).map((item) => (
-                      <li key={item.id}>
-                        {item.book_name} — {item.quantity} {item.quantity === 1 ? "book" : "books"}
-                      </li>
-                    ))}
-                    {callModal.items.length > 4 && (
-                      <li className="text-slate-400">+{callModal.items.length - 4} more…</li>
-                    )}
+                    {callModal.items.map((item) => {
+                      const unitWeight = bookWeightById.get(item.book_id) ?? 0;
+                      const lineWeight = unitWeight * item.quantity;
+                      return (
+                        <li key={item.id}>
+                          {item.book_name} — {item.quantity} {item.quantity === 1 ? "book" : "books"}
+                          {unitWeight > 0 && (
+                            <> × {formatBookWeight(unitWeight)} = <strong>{formatBookWeight(lineWeight)}</strong></>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
+                  {callModalTotalWeight > 0 && (
+                    <p className="pt-1 font-bold text-primary">
+                      Total weight: {formatBookWeight(callModalTotalWeight)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

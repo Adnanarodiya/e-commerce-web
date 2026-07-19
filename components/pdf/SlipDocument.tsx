@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { SlipData } from "@/lib/slip";
-import { formatDeliveryType } from "@/lib/format-order";
+import { formatBookWeight, formatDeliveryType } from "@/lib/format-order";
 
 export type { SlipData, SlipItem } from "@/lib/slip";
 
@@ -149,7 +149,14 @@ export function SlipDocument({ slip }: { slip: SlipData }) {
           </Text>
         </View>
 
-        <View style={[styles.fieldRow, { borderBottomWidth: 0 }]}>
+        <View
+          style={[
+            styles.fieldRow,
+            !(slip.total_weight_g != null && slip.total_weight_g > 0)
+              ? { borderBottomWidth: 0 }
+              : {},
+          ]}
+        >
           <Text style={styles.label}>Shipping Address</Text>
           <Text
             style={[
@@ -161,22 +168,37 @@ export function SlipDocument({ slip }: { slip: SlipData }) {
           </Text>
         </View>
 
+        {slip.total_weight_g != null && slip.total_weight_g > 0 ? (
+          <View style={[styles.fieldRow, { borderBottomWidth: 0 }]}>
+            <Text style={styles.label}>Total Weight</Text>
+            <Text style={styles.value}>{formatBookWeight(slip.total_weight_g)}</Text>
+          </View>
+        ) : null}
+
         <Text style={styles.sectionTitle}>Pack Contents</Text>
         <View style={styles.itemsBox}>
-          {slip.items.map((item, idx) => (
-            <View
-              key={idx}
-              style={[
-                styles.itemRow,
-                idx === slip.items.length - 1
-                  ? { borderBottomWidth: 0 }
-                  : {},
-              ]}
-            >
-              <Text style={styles.itemName}>{item.book_name}</Text>
-              <Text style={styles.itemQty}>x {item.quantity}</Text>
-            </View>
-          ))}
+          {slip.items.map((item, idx) => {
+            const unit = item.unit_weight_g ?? 0;
+            const line = unit * item.quantity;
+            const qtyLabel =
+              unit > 0
+                ? `x ${item.quantity} · ${formatBookWeight(unit)} = ${formatBookWeight(line)}`
+                : `x ${item.quantity}`;
+            return (
+              <View
+                key={idx}
+                style={[
+                  styles.itemRow,
+                  idx === slip.items.length - 1
+                    ? { borderBottomWidth: 0 }
+                    : {},
+                ]}
+              >
+                <Text style={styles.itemName}>{item.book_name}</Text>
+                <Text style={styles.itemQty}>{qtyLabel}</Text>
+              </View>
+            );
+          })}
         </View>
 
         <View style={styles.stampBox}>

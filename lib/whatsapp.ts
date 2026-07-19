@@ -1,4 +1,5 @@
 import type { OrderConfirmationData } from "@/lib/order-confirmation";
+import { generateInvoiceImageBlob } from "@/lib/invoice-image";
 
 /** Normalize Indian phone numbers for wa.me links (91 prefix). */
 export function normalizeWhatsAppPhone(phone: string): string {
@@ -15,11 +16,19 @@ export function formatOrderWhatsAppMessage(data: OrderConfirmationData): string 
   const courier = data.courier_charge.toFixed(2);
   const total = data.total.toFixed(2);
   const isBank = data.payment_type === "bank";
+  const bookLines = data.items.map((item, index) => {
+    const unitPrice = item.price.toFixed(2);
+    const lineTotal = (item.price * item.quantity).toFixed(2);
+    return `${index + 1}. *${item.book_name}*\n   ${item.quantity} × ₹${unitPrice} = ₹${lineTotal}`;
+  });
 
   const lines = [
     `Assalamualaikum ${data.customer_name},`,
     "",
     `Your order *${data.id}* quotation:`,
+    "",
+    "*Books:*",
+    ...bookLines,
     "",
     `Products: ₹${products}`,
     `Packaging: ₹${packaging}`,
@@ -59,7 +68,7 @@ export function openWhatsAppChat(phone: string, message: string): void {
   link.remove();
 }
 
-/** Share quotation directly to the order customer number via wa.me (text only). */
+/** Open the customer's WhatsApp chat with the complete quotation text. */
 export function shareOrderOnWhatsApp(options: {
   phone: string;
   data: OrderConfirmationData;
@@ -96,4 +105,138 @@ export function shareOrderConfirmedOnWhatsApp(order: {
     formatOrderConfirmedWhatsAppMessage(order)
   );
   return "opened";
+}
+
+export type InvoiceShareKind = "quotation" | "invoice";
+
+/** Caption sent with the Tax Invoice image (competitor-style). */
+export function formatTransactionUpdateMessage(
+  data: OrderConfirmationData,
+  kind: InvoiceShareKind = "invoice"
+): string {
+  const isBank = data.payment_type === "bank";
+  const total = Math.round(data.total).toLocaleString("en-IN");
+  // Quotations are unpaid; an invoice is sent only after full payment.
+  const balance =
+    kind === "quotation" ? total : "0";
+
+  const heading =
+    kind === "quotation" ? "*QUOTATION*" : "*TRANSACTION UPDATE*";
+  const intro =
+    kind === "quotation"
+      ? "Please find the quotation for your order below. Kindly review and confirm."
+      : "We are pleased to have you as a valued customer. Please find the details of your transaction.";
+
+  const lines = [
+    heading,
+    "",
+    "Greetings from Noorani Makatib",
+    intro,
+    "",
+    kind === "quotation" ? "Quotation :" : "Sale Invoice :",
+    `Invoice No: ${data.id}`,
+    `Invoice Amount: ₹${total}`,
+    `Balance: ₹${balance}`,
+    "",
+  ];
+
+  if (kind === "quotation") {
+    const products = data.productsTotal.toFixed(2);
+    const packaging = data.packaging_charge.toFixed(2);
+    const courier = data.courier_charge.toFixed(2);
+    lines.push(
+      `Products: ₹${products}`,
+      `Packaging: ₹${packaging}`,
+      `Courier: ₹${courier}`,
+      `*Total: ₹${total}*`,
+      ""
+    );
+    if (isBank) {
+      lines.push("Payment: *Bank / UPI*");
+      if (data.payee_name) lines.push(`Payee: ${data.payee_name}`);
+      if (data.upi_id) lines.push(`UPI ID: ${data.upi_id}`);
+      lines.push("");
+    } else {
+      lines.push("Payment: *Cash on Delivery*", "");
+    }
+  }
+
+  lines.push(
+    "Thanks for doing business with us.",
+    "Regards,",
+    "Noorani Makatib"
+  );
+  return lines.join("\n");
+}
+
+export interface ShareInvoiceOptions {
+  kind?: InvoiceShareKind;
+  received?: number;
+  balance?: number;
+}
+
+/**
+ * Share the Tax Invoice IMAGE + caption to the order's phone number.
+ *
+ * Reality of WhatsApp from a website:
+ * - `wa.me` can open the exact customer chat with TEXT only — it cannot attach an image.
+ * - Mobile Web Share can attach the image, but the user still taps WhatsApp (chat may not auto-select).
+ * - Fully automatic image+text to a given number needs WhatsApp Business Cloud API (paid).
+ *
+ * This helper does the best free path:
+ * 1) Always downloads the invoice PNG (easy to attach).
+ * 2) Always opens WhatsApp chat for that exact phone with the caption.
+ * 3) On phones that support it, also offers the native share sheet with the image.
+ */
+export async function shareInvoiceImageOnWhatsApp(
+  data: OrderConfirmationData,
+  options: ShareInvoiceOptions = {}
+): Promise<"shared" | "fallback"> {
+  const kind = options.kind ?? "invoice";
+  const message = formatTransactionUpdateMessage(data, kind);
+  const blob = await generateInvoiceImageBlob(data, {
+    received: options.received,
+    balance: options.balance,
+  });
+  const file = new File([blob], `invoice-${data.id}.png`, {
+    type: "image/png",
+  });
+
+  // Always save the image locally so attach is one tap away.
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `invoice-${data.id}.png`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+  // Always open the correct customer chat with the caption.
+  openWhatsAppChat(data.customer_phone, message);
+
+  const nav = typeof navigator !== "undefined" ? navigator : undefined;
+  const canShareFiles =
+    !!nav &&
+    typeof nav.canShare === "function" &&
+    nav.canShare({ files: [file] });
+
+  if (canShareFiles && typeof nav!.share === "function") {
+    try {
+      // Give the download / wa.me a moment, then offer share sheet for image attach.
+      await new Promise((r) => setTimeout(r, 400));
+      await nav!.share({
+        files: [file],
+        text: message,
+        title: `Invoice ${data.id}`,
+      });
+      return "shared";
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return "shared";
+      }
+    }
+  }
+
+  return "fallback";
 }

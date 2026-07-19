@@ -32,3 +32,23 @@ export function formatMoneyPdf(amount: number): string {
 export function formatMoneyInr(amount: number): string {
   return `₹${amount.toFixed(2)}`;
 }
+
+/** Book / package weight in grams → "90 g" or "1.35 kg". */
+export function formatBookWeight(grams: number): string {
+  if (grams < 1000) return `${grams.toLocaleString()} g`;
+  const kilograms = grams / 1000;
+  return `${kilograms.toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  })} kg`;
+}
+
+/** Total weight for order items using book_id → weight (g) map. */
+export function orderItemsTotalWeight(
+  items: { book_id?: number; quantity: number }[],
+  weightByBookId: Map<number, number>
+): number {
+  return items.reduce((total, item) => {
+    const unit = item.book_id != null ? weightByBookId.get(item.book_id) ?? 0 : 0;
+    return total + unit * item.quantity;
+  }, 0);
+}

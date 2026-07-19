@@ -3,13 +3,20 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { openSlipPdfInNewTab, downloadSlipPdf } from "@/lib/pdf-download";
-import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
+import {
+  formatBookWeight,
+  formatDeliveryType,
+  formatOrderItemsSummary,
+  orderItemsTotalWeight,
+} from "@/lib/format-order";
+import { enrichSlipWithWeights } from "@/lib/slip";
 import { useLockBodyScroll } from "@/lib/use-lock-body-scroll";
 import { Printer, Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface SlipItem {
+  book_id?: number;
   book_name: string;
   quantity: number;
 }
@@ -35,6 +42,7 @@ interface ShippingSlipModalProps {
     shippingAddress: string;
     deliveryMethod: string;
   };
+  weightByBookId?: Map<number, number>;
   onClose: () => void;
 }
 
@@ -66,6 +74,7 @@ function SlipField({
 export default function ShippingSlipModal({
   slip,
   labels,
+  weightByBookId,
   onClose,
 }: ShippingSlipModalProps) {
   const [mounted, setMounted] = useState(false);
@@ -83,7 +92,7 @@ export default function ShippingSlipModal({
   const handlePrint = async () => {
     setBusy(true);
     try {
-      await openSlipPdfInNewTab(slip);
+      await openSlipPdfInNewTab(enrichSlipWithWeights(slip, weightByBookId));
     } finally {
       setBusy(false);
     }
@@ -92,7 +101,7 @@ export default function ShippingSlipModal({
   const handleDownload = async () => {
     setBusy(true);
     try {
-      await downloadSlipPdf(slip);
+      await downloadSlipPdf(enrichSlipWithWeights(slip, weightByBookId));
     } finally {
       setBusy(false);
     }
@@ -131,7 +140,11 @@ export default function ShippingSlipModal({
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
-            <SlipPreview slip={slip} labels={labels} />
+            <SlipPreview
+              slip={slip}
+              labels={labels}
+              weightByBookId={weightByBookId}
+            />
           </div>
 
           <div className="shrink-0 px-4 pb-4 pt-3 sm:px-6 sm:pb-6 border-t border-dashed border-gray-300 bg-white">
@@ -173,10 +186,15 @@ export default function ShippingSlipModal({
 function SlipPreview({
   slip,
   labels,
+  weightByBookId,
 }: {
   slip: ShippingSlipModalProps["slip"];
   labels: ShippingSlipModalProps["labels"];
+  weightByBookId?: Map<number, number>;
 }) {
+  const weights = weightByBookId ?? new Map<number, number>();
+  const totalWeight = orderItemsTotalWeight(slip.items, weights);
+
   return (
     <div className="space-y-3 text-sm">
       <div className="border-2 border-black rounded-lg p-3 text-center">
@@ -197,6 +215,9 @@ function SlipPreview({
           label={labels.deliveryMethod}
           value={formatDeliveryType(slip.delivery_type)}
         />
+        {totalWeight > 0 && (
+          <SlipField label="Total weight" value={formatBookWeight(totalWeight)} />
+        )}
       </div>
 
       <Separator className="border-dashed" />
@@ -206,19 +227,33 @@ function SlipPreview({
           Pack content · {formatOrderItemsSummary(slip.items)}
         </p>
         <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
-          {slip.items.map((item, idx) => (
-            <div
-              key={idx}
-              className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between px-3 py-2.5"
-            >
-              <span className="text-sm font-medium text-gray-900 break-words">
-                {item.book_name}
-              </span>
-              <span className="text-xs font-bold text-gray-600 shrink-0">
-                {item.quantity} {item.quantity === 1 ? "book" : "books"}
-              </span>
-            </div>
-          ))}
+          {slip.items.map((item, idx) => {
+            const unitWeight =
+              item.book_id != null ? weights.get(item.book_id) ?? 0 : 0;
+            const lineWeight = unitWeight * item.quantity;
+            return (
+              <div
+                key={idx}
+                className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between px-3 py-2.5"
+              >
+                <span className="text-sm font-medium text-gray-900 break-words">
+                  {item.book_name}
+                </span>
+                <span className="text-xs font-bold text-gray-600 shrink-0 text-right">
+                  {item.quantity} {item.quantity === 1 ? "book" : "books"}
+                  {unitWeight > 0 && (
+                    <span className="font-normal text-gray-500">
+                      {" "}
+                      × {formatBookWeight(unitWeight)} ={" "}
+                      <span className="font-bold text-gray-900">
+                        {formatBookWeight(lineWeight)}
+                      </span>
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

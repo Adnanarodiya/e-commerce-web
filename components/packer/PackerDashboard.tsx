@@ -10,7 +10,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/context/LanguageContext";
 import { setStaffSession } from "@/lib/staff-session";
-import { formatDeliveryType, formatOrderItemsSummary } from "@/lib/format-order";
+import {
+  formatBookWeight,
+  formatDeliveryType,
+  formatOrderItemsSummary,
+  orderItemsTotalWeight,
+} from "@/lib/format-order";
 import { db, supabase } from "@/lib/supabase";
 import { Check, LogOut, PackageCheck, Printer, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -36,7 +41,57 @@ function toSlipData(order: Order): ShippingSlipData {
   };
 }
 
-function OrderSummary({ order }: { order: Order }) {
+function OrderItemsWithWeight({
+  items,
+  weightByBookId,
+}: {
+  items: Order["items"];
+  weightByBookId: Map<number, number>;
+}) {
+  const totalWeight = orderItemsTotalWeight(items, weightByBookId);
+
+  return (
+    <div className="bg-muted/40 p-2 border space-y-1 text-xs">
+      {items.map((item, idx) => {
+        const unitWeight =
+          item.book_id != null ? weightByBookId.get(item.book_id) ?? 0 : 0;
+        const lineWeight = unitWeight * item.quantity;
+        return (
+          <div key={idx} className="flex justify-between gap-2">
+            <span className="min-w-0">{item.book_name}</span>
+            <span className="shrink-0 text-right font-bold">
+              {item.quantity} {item.quantity === 1 ? "book" : "books"}
+              {unitWeight > 0 && (
+                <span className="font-normal text-muted-foreground">
+                  {" "}
+                  × {formatBookWeight(unitWeight)} ={" "}
+                  <span className="font-bold text-foreground">
+                    {formatBookWeight(lineWeight)}
+                  </span>
+                </span>
+              )}
+            </span>
+          </div>
+        );
+      })}
+      {totalWeight > 0 && (
+        <p className="pt-1 font-bold text-primary border-t border-border mt-1">
+          Total weight: {formatBookWeight(totalWeight)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function OrderSummary({
+  order,
+  weightByBookId,
+}: {
+  order: Order;
+  weightByBookId: Map<number, number>;
+}) {
+  const totalWeight = orderItemsTotalWeight(order.items, weightByBookId);
+
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 text-sm">
       <div className="flex justify-between gap-3">
@@ -51,6 +106,14 @@ function OrderSummary({ order }: { order: Order }) {
         <span className="text-xs font-semibold uppercase text-slate-500">Items</span>
         <span className="font-bold text-right">{formatOrderItemsSummary(order.items)}</span>
       </div>
+      {totalWeight > 0 && (
+        <div className="flex justify-between gap-3">
+          <span className="text-xs font-semibold uppercase text-slate-500">Total weight</span>
+          <span className="font-bold text-right text-primary">
+            {formatBookWeight(totalWeight)}
+          </span>
+        </div>
+      )}
       <div className="flex justify-between gap-3">
         <span className="text-xs font-semibold uppercase text-slate-500">Delivery</span>
         <span className="font-bold text-right">{formatDeliveryType(order.delivery_type)}</span>
@@ -62,6 +125,9 @@ function OrderSummary({ order }: { order: Order }) {
 export default function PackerDashboard() {
   const { t, isRtl, setUserRole } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [weightByBookId, setWeightByBookId] = useState<Map<number, number>>(
+    () => new Map()
+  );
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<"queue" | "packed">("queue");
   const [printSlip, setPrintSlip] = useState<ShippingSlipData | null>(null);
@@ -75,8 +141,14 @@ export default function PackerDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const allOrders = await db.getOrders();
+      const [allOrders, allBooks] = await Promise.all([
+        db.getOrders(),
+        db.getBooks(),
+      ]);
       setOrders(allOrders as Order[]);
+      setWeightByBookId(
+        new Map(allBooks.map((b) => [b.id, Number(b.weight ?? 0)]))
+      );
     } catch (err) {
       console.error(err);
     } finally {
@@ -321,16 +393,10 @@ export default function PackerDashboard() {
                       </p>
                     </div>
                     <Separator />
-                    <div className="bg-muted/40 p-2 border space-y-1 text-xs">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between">
-                          <span>{item.book_name}</span>
-                          <span className="font-bold">
-                            {item.quantity} {item.quantity === 1 ? "book" : "books"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <OrderItemsWithWeight
+                      items={order.items}
+                      weightByBookId={weightByBookId}
+                    />
                     <div className="grid grid-cols-2 gap-2">
                       <Button variant="outline" size="sm" className="text-xs" onClick={() => handlePrintSlip(order)}>
                         <Printer className="h-3.5 w-3.5 mr-1" />
@@ -355,6 +421,7 @@ export default function PackerDashboard() {
       ) : (
         <PackedOrdersPanel
           orders={packedOrdersForPanel}
+          weightByBookId={weightByBookId}
           onConfirmPickup={(orderId) => {
             const order = orders.find((o) => o.id === orderId);
             if (order) setPickupTarget(order);
@@ -376,7 +443,9 @@ export default function PackerDashboard() {
         headerTone="green"
         icon={<Check className="h-5 w-5 text-white" />}
       >
-        {boxPackTarget ? <OrderSummary order={boxPackTarget} /> : null}
+        {boxPackTarget ? (
+          <OrderSummary order={boxPackTarget} weightByBookId={weightByBookId} />
+        ) : null}
       </ConfirmModal>
 
       <ConfirmModal
@@ -391,12 +460,15 @@ export default function PackerDashboard() {
         headerTone="slate"
         icon={<PackageCheck className="h-5 w-5 text-white" />}
       >
-        {pickupTarget ? <OrderSummary order={pickupTarget} /> : null}
+        {pickupTarget ? (
+          <OrderSummary order={pickupTarget} weightByBookId={weightByBookId} />
+        ) : null}
       </ConfirmModal>
 
       {printSlip && (
         <ShippingSlipModal
           slip={printSlip}
+          weightByBookId={weightByBookId}
           labels={{
             slipTitle: t("slipTitle"),
             slipDesc: t("slipDesc"),

@@ -4,10 +4,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  formatBookWeight,
+  orderItemsTotalWeight,
+} from "@/lib/format-order";
 import { formatRupee } from "@/lib/profit";
-import { Check, PackageCheck, Printer, Download } from "lucide-react";
+import { Check, PackageCheck, Printer, Download, ImageIcon } from "lucide-react";
 
 export interface PackedOrderItem {
+  book_id?: number;
   book_name: string;
   quantity: number;
 }
@@ -31,8 +36,10 @@ interface PackedOrdersPanelProps {
   onConfirmPickup: (orderId: string) => void;
   onPrintSlip?: (order: PackedOrder) => void;
   onDownloadBill?: (order: PackedOrder) => void;
+  onSendInvoice?: (order: PackedOrder) => void;
   confirmingId?: string | null;
   emptyMessage?: string;
+  weightByBookId?: Map<number, number>;
 }
 
 function formatDateTime(iso?: string | null) {
@@ -45,10 +52,13 @@ export default function PackedOrdersPanel({
   onConfirmPickup,
   onPrintSlip,
   onDownloadBill,
+  onSendInvoice,
   confirmingId,
   emptyMessage,
+  weightByBookId,
 }: PackedOrdersPanelProps) {
   const { t, isRtl } = useLanguage();
+  const weights = weightByBookId ?? new Map<number, number>();
   const packed = orders
     .filter((o) => o.status === "packed")
     .sort((a, b) => {
@@ -69,7 +79,9 @@ export default function PackedOrdersPanel({
 
   return (
     <div className="space-y-3">
-      {packed.map((order) => (
+      {packed.map((order) => {
+        const totalWeight = orderItemsTotalWeight(order.items, weights);
+        return (
         <Card key={order.id} className="border border-orange-200">
           <CardHeader className="py-3 px-4 sm:px-5 bg-orange-50/40">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
@@ -102,12 +114,33 @@ export default function PackedOrdersPanel({
           </CardHeader>
           <CardContent className="px-4 sm:px-5 pb-4 pt-3 space-y-3 text-xs">
             <div className="bg-muted/40 border border-border p-2.5 space-y-1">
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between gap-2">
-                  <span className="font-medium">{item.book_name}</span>
-                  <span className="shrink-0 font-bold">x{item.quantity}</span>
-                </div>
-              ))}
+              {order.items.map((item, idx) => {
+                const unitWeight =
+                  item.book_id != null ? weights.get(item.book_id) ?? 0 : 0;
+                const lineWeight = unitWeight * item.quantity;
+                return (
+                  <div key={idx} className="flex justify-between gap-2">
+                    <span className="font-medium min-w-0">{item.book_name}</span>
+                    <span className="shrink-0 text-right font-bold">
+                      x{item.quantity}
+                      {unitWeight > 0 && (
+                        <span className="font-normal text-muted-foreground">
+                          {" "}
+                          × {formatBookWeight(unitWeight)} ={" "}
+                          <span className="font-bold text-foreground">
+                            {formatBookWeight(lineWeight)}
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+              {totalWeight > 0 && (
+                <p className="pt-1 font-bold text-primary border-t border-border mt-1">
+                  Total weight: {formatBookWeight(totalWeight)}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] sm:text-xs text-muted-foreground">
@@ -146,6 +179,16 @@ export default function PackedOrdersPanel({
                   Download Bill
                 </Button>
               )}
+              {onSendInvoice && (
+                <Button
+                  size="sm"
+                  className="text-xs bg-sky-600 hover:bg-sky-700 text-white"
+                  onClick={() => onSendInvoice(order)}
+                >
+                  <ImageIcon className="h-3.5 w-3.5 mr-1" />
+                  Send Invoice
+                </Button>
+              )}
               {!order.pickup_confirmed && (
                 <Button
                   size="sm"
@@ -166,7 +209,8 @@ export default function PackedOrdersPanel({
             </div>
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }

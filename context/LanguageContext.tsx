@@ -123,7 +123,7 @@ export const translations = {
     whatsappQuotationPrompt:
       "Send the quotation message to {name} at {phone}?",
     whatsappQuotationHint:
-      "Opens WhatsApp directly to the order phone with a pre-filled quotation. You can attach the QR manually if needed.",
+      "Opens WhatsApp to this customer's number with the complete quotation and price breakdown. No image will be sent.",
     cancelOrder: "Cancel Order",
     cancelOrderTitle: "Cancel this order?",
     cancelOrderPrompt: "Stock will be restored. This cannot be undone easily.",
@@ -283,7 +283,7 @@ export const translations = {
     whatsappQuotationPrompt:
       "کوٹیشن کا پیغام {name} کو {phone} پر بھیجیں؟",
     whatsappQuotationHint:
-      "آرڈر والے فون پر واٹس ایپ سیدھا کھلے گا اور کوٹیشن پہلے سے لکھی ہوگی۔ QR آپ خود اٹیچ کر سکتے ہیں۔",
+      "اسی کسٹمر کے نمبر پر مکمل کوٹیشن اور قیمتوں کی تفصیل کے ساتھ واٹس ایپ کھلے گا۔ کوئی تصویر نہیں بھیجی جائے گی۔",
     cancelOrder: "آرڈر منسوخ کریں",
     cancelOrderTitle: "یہ آرڈر منسوخ کریں؟",
     cancelOrderPrompt: "اسٹاک واپس کر دیا جائے گا۔ یہ آسانی سے واپس نہیں ہو سکتا۔",
