@@ -2049,20 +2049,20 @@ export default function AdminDashboard() {
           </div>
 
           <div className="space-y-1.5">
-            <label className={adminFieldLabel}>Cover Image URL (optional)</label>
+            <label className={adminFieldLabel}>Cover Image / PDF URL (optional)</label>
             <Input
               value={bookFormData.image}
               onChange={e => setBookFormData(prev => ({ ...prev, image: e.target.value }))}
-              placeholder="https://... or upload below"
+              placeholder="https://... or upload image/PDF below"
               className={adminFieldInput}
             />
             <div className="flex items-center gap-2 pt-1">
               <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
                 <Upload className="h-4 w-4" />
-                <span>Upload cover image</span>
+                <span>Upload cover image or PDF</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,application/pdf,.pdf"
                   className="hidden"
                   disabled={uploadingCover}
                   onChange={async (e) => {

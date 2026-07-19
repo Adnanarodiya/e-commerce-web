@@ -21,6 +21,7 @@ import {
   Star,
 } from "lucide-react";
 import BookImage from "@/components/ui/BookImage";
+import { isPdfBookFile } from "@/lib/book-image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -179,6 +180,16 @@ export default function Product() {
                 className="object-contain rounded shadow-lg"
               />
             </div>
+            {isPdfBookFile(book.image) && (
+              <a
+                href={book.image}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                {isRtl ? "PDF کھولیں" : "Open PDF"}
+              </a>
+            )}
           </div>
         </div>
 
