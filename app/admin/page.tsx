@@ -92,6 +92,7 @@ interface Order {
   pickup_confirmed?: boolean;
   pickup_confirmed_at?: string | null;
   admin_notes?: string | null;
+  quotation_shared_at?: string | null;
   confirmed_at?: string | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
@@ -368,11 +369,25 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleWhatsAppQuotationConfirm = () => {
+  const handleWhatsAppQuotationConfirm = async () => {
     if (!whatsappQuotationOrder) return;
     const order = whatsappQuotationOrder;
     setWhatsappQuotationOrder(null);
     shareOrderOnWhatsAppChat(order);
+
+    const sharedAt = await db.markQuotationShared(order.id);
+    if (sharedAt) {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id ? { ...o, quotation_shared_at: sharedAt } : o
+        )
+      );
+    } else {
+      setToast({
+        message: "WhatsApp opened, but quotation status could not be saved",
+        visible: true,
+      });
+    }
   };
 
   const handleConfirmOrderToPacker = async () => {
@@ -1104,15 +1119,17 @@ export default function AdminDashboard() {
                           </div>
 
                           <div className="flex flex-col gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full text-xs font-semibold border-primary/30 text-primary hover:bg-primary/5"
-                              onClick={() => handleQuotationClick(order)}
-                            >
-                              <PhoneCall className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                              {t("quotationOrder")}
-                            </Button>
+                            {!order.quotation_shared_at && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full text-xs font-semibold border-primary/30 text-primary hover:bg-primary/5"
+                                onClick={() => handleQuotationClick(order)}
+                              >
+                                <PhoneCall className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                                {t("quotationOrder")}
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"

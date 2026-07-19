@@ -76,8 +76,8 @@ export function formatOrderConfirmedWhatsAppMessage(order: {
   return [
     `Assalamualaikum ${order.customer_name},`,
     "",
-    `Your order *${order.id}* has been confirmed.`,
-    "It is now ready to pack.",
+    `✅ Your order number *${order.id}* has been confirmed.`,
+    "It is now ready for packing.",
     "",
     "Thank you for ordering with us.",
     "",

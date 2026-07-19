@@ -46,6 +46,7 @@ interface Order {
   pickup_confirmed?: boolean;
   pickup_confirmed_at?: string | null;
   admin_notes?: string | null;
+  quotation_shared_at?: string | null;
   confirmed_at?: string | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
@@ -303,6 +304,28 @@ export const db = {
     dbData.orders[orderIdx] = { ...dbData.orders[orderIdx], ...updates };
     saveMockDB(dbData);
     return true;
+  },
+
+  /** Mark that the quotation WhatsApp action was opened for this order. */
+  async markQuotationShared(id: string): Promise<string | null> {
+    const sharedAt = new Date().toISOString();
+
+    if (isRealSupabaseConfigured && supabase) {
+      const { error } = await supabase
+        .from("orders")
+        .update({ quotation_shared_at: sharedAt })
+        .eq("id", id);
+      if (!error) return sharedAt;
+      console.error("Supabase mark quotation shared error:", error);
+      return null;
+    }
+
+    const dbData = getMockDB();
+    const orderIdx = dbData.orders.findIndex((o: Order) => o.id === id);
+    if (orderIdx === -1) return null;
+    dbData.orders[orderIdx].quotation_shared_at = sharedAt;
+    saveMockDB(dbData);
+    return sharedAt;
   },
 
   /** Send a quoted order to the packer queue. */

@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS orders (
   pickup_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
   pickup_confirmed_at TIMESTAMP WITH TIME ZONE,
   admin_notes TEXT,
+  quotation_shared_at TIMESTAMP WITH TIME ZONE,
   confirmed_at TIMESTAMP WITH TIME ZONE,
   cancelled_at TIMESTAMP WITH TIME ZONE,
   cancel_reason TEXT,
