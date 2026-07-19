@@ -143,25 +143,57 @@ export default function Checkout() {
     setIsSubmitting(true);
     setStockError("");
 
-    // Stock validation: prevent ordering more than available inventory
+    const normalizeName = (name: string) =>
+      String(name || "")
+        .trim()
+        .toLowerCase();
+
+    let catalogBooks: Awaited<ReturnType<typeof db.getBooks>> = [];
     try {
-      const allBooks = await db.getBooks();
-      const stockMap = new Map(allBooks.map(b => [b.id, b.stock]));
-      const insufficient = cart.filter(
-        (item) => item.quantity > (stockMap.get(item.id) ?? 0)
-      );
-      if (insufficient.length > 0) {
-        const names = insufficient.map((i) => i.name).join(", ");
-        setStockError(
-          isRtl
-            ? `درخواست کردہ تعداد اسٹاک سے زیادہ ہے: ${names}`
-            : `Requested quantity exceeds available stock for: ${names}`
-        );
-        setIsSubmitting(false);
-        return;
-      }
+      catalogBooks = await db.getBooks();
     } catch (err) {
       console.error("Stock check failed:", err);
+    }
+
+    const resolveBook = (item: { id: number; name: string }) => {
+      const id = Number(item.id);
+      const nameKey = normalizeName(item.name);
+      const byId = catalogBooks.find((b) => Number(b.id) === id);
+      const byName = catalogBooks.find(
+        (b) => normalizeName(b.name_en) === nameKey
+      );
+      // Prefer name match when cart ID points at a different title (stale cart after reseed)
+      if (byName && (!byId || normalizeName(byId.name_en) !== nameKey)) {
+        return byName;
+      }
+      return byId ?? byName ?? null;
+    };
+
+    const insufficient = cart
+      .map((item) => {
+        const book = resolveBook(item);
+        return {
+          name: item.name,
+          requested: item.quantity,
+          available: Number(book?.stock ?? 0),
+        };
+      })
+      .filter((row) => row.requested > row.available);
+
+    if (insufficient.length > 0) {
+      const details = insufficient
+        .map(
+          (i) =>
+            `${i.name} (requested ${i.requested}, available ${i.available})`
+        )
+        .join("; ");
+      setStockError(
+        isRtl
+          ? `درخواست کردہ تعداد اسٹاک سے زیادہ ہے: ${details}`
+          : `Requested quantity exceeds available stock for: ${details}`
+      );
+      setIsSubmitting(false);
+      return;
     }
 
     // Collision-safe Order ID generation (retry until unique)
@@ -202,12 +234,12 @@ export default function Checkout() {
       created_at: new Date().toISOString()
     };
 
-    const itemsData = cart.map(item => ({
+    const itemsData = cart.map((item) => ({
       order_id: generatedOrderId,
-      book_id: item.id,
+      book_id: Number(resolveBook(item)?.id ?? item.id),
       book_name: item.name,
       quantity: item.quantity,
-      price: item.price
+      price: item.price,
     }));
 
     try {

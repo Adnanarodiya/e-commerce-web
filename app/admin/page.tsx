@@ -1269,14 +1269,6 @@ export default function AdminDashboard() {
                           <div className="flex flex-col gap-2">
                             <Button
                               size="sm"
-                              className="w-full text-xs font-semibold bg-green-600 hover:bg-green-700 text-white"
-                              onClick={() => shareOrderOnWhatsAppChat(order)}
-                            >
-                              <MessageCircle className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                              {t("shareWhatsApp")}
-                            </Button>
-                            <Button
-                              size="sm"
                               className="w-full text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white"
                               onClick={() => handleSendInvoiceImage(order)}
                             >

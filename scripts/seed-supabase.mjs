@@ -37,8 +37,8 @@ const books = JSON.parse(
   fs.readFileSync(path.join(root, "data/urdu-kitab-inventory.json"), "utf8")
 );
 
-if (books.length !== 116) {
-  console.warn(`Expected 116 Urdu Kitab titles, found ${books.length}.`);
+if (books.length < 10) {
+  console.warn(`Unexpected catalog size: ${books.length} titles.`);
 }
 
 const seen = {};

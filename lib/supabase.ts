@@ -3,9 +3,12 @@ import { DEFAULT_BOOKS as CATALOG_DEFAULT_BOOKS } from "./catalog";
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  "";
 
-const isRealSupabaseConfigured = supabaseUrl && supabaseAnonKey;
+const isRealSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 // Real client
 export const supabase = isRealSupabaseConfigured
@@ -130,7 +133,16 @@ export const db = {
   async getBooks(): Promise<Book[]> {
     if (isRealSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from("books").select("*").order("id", { ascending: true });
-      if (!error && data) return data;
+      if (!error && data) {
+        return data.map((book: Book) => ({
+          ...book,
+          id: Number(book.id),
+          price: Number(book.price),
+          cost_price: Number(book.cost_price ?? 0),
+          stock: Number(book.stock ?? 0),
+          weight: Number(book.weight ?? 80),
+        }));
+      }
       console.warn("Supabase error fetching books, falling back to LocalStorage:", error);
     }
     return getMockDB().books;
@@ -139,7 +151,16 @@ export const db = {
   async getBook(id: number): Promise<Book | null> {
     if (isRealSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from("books").select("*").eq("id", id).single();
-      if (!error && data) return data;
+      if (!error && data) {
+        return {
+          ...data,
+          id: Number(data.id),
+          price: Number(data.price),
+          cost_price: Number(data.cost_price ?? 0),
+          stock: Number(data.stock ?? 0),
+          weight: Number(data.weight ?? 80),
+        };
+      }
     }
     const books = getMockDB().books;
     return books.find((b: Book) => b.id === id) || null;
