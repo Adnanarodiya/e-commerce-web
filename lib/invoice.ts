@@ -1,4 +1,5 @@
 export interface InvoiceItem {
+  book_id?: number;
   book_name: string;
   quantity: number;
   price: number;

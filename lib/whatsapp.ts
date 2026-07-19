@@ -173,20 +173,15 @@ export interface ShareInvoiceOptions {
   kind?: InvoiceShareKind;
   received?: number;
   balance?: number;
+  weightByBookId?: Map<number, number>;
 }
 
 /**
- * Share the Tax Invoice IMAGE + caption to the order's phone number.
+ * Share the paid invoice IMAGE + caption.
+ * Invoice always shows PAID (full payment received, balance 0).
  *
- * Reality of WhatsApp from a website:
- * - `wa.me` can open the exact customer chat with TEXT only — it cannot attach an image.
- * - Mobile Web Share can attach the image, but the user still taps WhatsApp (chat may not auto-select).
- * - Fully automatic image+text to a given number needs WhatsApp Business Cloud API (paid).
- *
- * This helper does the best free path:
- * 1) Always downloads the invoice PNG (easy to attach).
- * 2) Always opens WhatsApp chat for that exact phone with the caption.
- * 3) On phones that support it, also offers the native share sheet with the image.
+ * Free WhatsApp path: download image + open customer chat with caption.
+ * Native share sheet is offered on phones that support file sharing.
  */
 export async function shareInvoiceImageOnWhatsApp(
   data: OrderConfirmationData,
@@ -195,8 +190,9 @@ export async function shareInvoiceImageOnWhatsApp(
   const kind = options.kind ?? "invoice";
   const message = formatTransactionUpdateMessage(data, kind);
   const blob = await generateInvoiceImageBlob(data, {
-    received: options.received,
-    balance: options.balance,
+    received: options.received ?? data.total,
+    balance: options.balance ?? 0,
+    weightByBookId: options.weightByBookId,
   });
   const file = new File([blob], `invoice-${data.id}.png`, {
     type: "image/png",
@@ -223,7 +219,6 @@ export async function shareInvoiceImageOnWhatsApp(
 
   if (canShareFiles && typeof nav!.share === "function") {
     try {
-      // Give the download / wa.me a moment, then offer share sheet for image attach.
       await new Promise((r) => setTimeout(r, 400));
       await nav!.share({
         files: [file],

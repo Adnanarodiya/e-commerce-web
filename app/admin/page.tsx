@@ -661,12 +661,16 @@ export default function AdminDashboard() {
   const handleSendInvoiceImage = async (order: Order) => {
     try {
       const data = buildConfirmation(order);
-      const result = await shareInvoiceImageOnWhatsApp(data);
+      const result = await shareInvoiceImageOnWhatsApp(data, {
+        received: data.total,
+        balance: 0,
+        weightByBookId: bookWeightById,
+      });
       setToast({
         message:
           result === "shared"
-            ? "Invoice ready to share on WhatsApp"
-            : "Invoice image downloaded — attach it in the WhatsApp chat",
+            ? "Paid invoice ready to share on WhatsApp"
+            : "Paid invoice downloaded — attach it in the WhatsApp chat",
         visible: true,
       });
     } catch (err) {
@@ -1263,15 +1267,6 @@ export default function AdminDashboard() {
 
                         <div className="border-t border-red-100 bg-red-50/30 px-4 py-4">
                           <div className="flex flex-col gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-xs font-semibold border-slate-200"
-                              onClick={() => handleDownloadBill(order)}
-                            >
-                              <Download className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                              {t("downloadConfirmation")}
-                            </Button>
                             <Button
                               size="sm"
                               className="w-full text-xs font-semibold bg-green-600 hover:bg-green-700 text-white"
