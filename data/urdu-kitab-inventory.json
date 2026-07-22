@@ -4,14 +4,14 @@
     "cost_price": 13.6,
     "weight": 30,
     "price": 15,
-    "stock": 491
+    "stock": 334
   },
   {
     "name": "Aap Dars E Quran Kese Dein",
     "cost_price": 15,
     "weight": 70,
     "price": 20,
-    "stock": 148
+    "stock": 146
   },
   {
     "name": "Al Arbaun Madaniyyah",
@@ -36,31 +36,24 @@
   },
   {
     "name": "Bachcho Ka Tohfa-1 English (72 Page)",
-    "cost_price": 23,
-    "weight": 125,
-    "price": 35,
-    "stock": 1500
-  },
-  {
-    "name": "Bachcho Ka Tohfa-1 English (72 Page)",
-    "cost_price": 25,
-    "weight": 125,
-    "price": 35,
-    "stock": 614
-  },
-  {
-    "name": "Bachcho Ka Tohfa-1 English (72 Page)",
     "cost_price": 25,
     "weight": 125,
     "price": 40,
-    "stock": 192
+    "stock": 1632
   },
   {
-    "name": "BACHCHO KA TOHFA-2",
+    "name": "Bachcho Ka Tohfa-1",
+    "cost_price": 13.2,
+    "weight": 80,
+    "price": 25,
+    "stock": 7226
+  },
+  {
+    "name": "Bachcho Ka Tohfa-2",
     "cost_price": 10,
     "weight": 60,
     "price": 18,
-    "stock": 7170
+    "stock": 6551
   },
   {
     "name": "Bachcho Ka Tohfa-2 English",
@@ -74,112 +67,126 @@
     "cost_price": 22,
     "weight": 110,
     "price": 30,
-    "stock": 114
+    "stock": 151
   },
   {
     "name": "Bachcho Ko Padhane Ka Tariqa",
     "cost_price": 80,
     "weight": 490,
     "price": 120,
-    "stock": 649
+    "stock": 632
   },
   {
     "name": "Bachcho Padhane Ka Tariqa Gujarati",
     "cost_price": 15,
     "weight": 90,
     "price": 20,
-    "stock": 31
+    "stock": 25
   },
   {
     "name": "Bayanat E Makatib-1",
     "cost_price": 130,
     "weight": 580,
     "price": 170,
-    "stock": 731
+    "stock": 728
   },
   {
     "name": "Darul Uloom Deoband Aur Maslak E Deoband",
     "cost_price": 42,
     "weight": 135,
     "price": 50,
-    "stock": 142
+    "stock": 3
   },
   {
     "name": "Dekhi Hui Duniya-1",
-    "cost_price": 73,
+    "cost_price": 0,
     "weight": 310,
     "price": 90,
-    "stock": 3
+    "stock": 0
+  },
+  {
+    "name": "Dekhi Hui Duniya-1 Gujarati",
+    "cost_price": 0,
+    "weight": 310,
+    "price": 60,
+    "stock": 0
+  },
+  {
+    "name": "Dekhi Hui Duniya-2",
+    "cost_price": 0,
+    "weight": 80,
+    "price": 0,
+    "stock": 0
   },
   {
     "name": "Dekhi Hui Duniya-2 Gujarati",
     "cost_price": 28,
     "weight": 180,
     "price": 35,
-    "stock": 98
+    "stock": 41
   },
   {
     "name": "DEKHI HUI DUNIYA-3",
     "cost_price": 83,
     "weight": 290,
     "price": 90,
-    "stock": 59
+    "stock": 58
   },
   {
     "name": "Dekhi Hui Duniya-3 Gujarati",
     "cost_price": 80,
     "weight": 430,
     "price": 100,
-    "stock": 382
+    "stock": 365
   },
   {
     "name": "Dekhi Hui Duniya-4",
     "cost_price": 58,
     "weight": 300,
     "price": 70,
-    "stock": 44
+    "stock": 42
   },
   {
     "name": "Dekhi Hui Duniya-4 Gujarati",
     "cost_price": 58,
     "weight": 280,
     "price": 70,
-    "stock": 778
+    "stock": 776
   },
   {
     "name": "Dekhi Hui Duniya-5",
     "cost_price": 55,
     "weight": 280,
     "price": 70,
-    "stock": 211
+    "stock": 213
   },
   {
     "name": "Dekhi Hui Duniya-6",
     "cost_price": 60,
     "weight": 290,
     "price": 90,
-    "stock": 467
+    "stock": 469
   },
   {
     "name": "Dekhi Hui Duniya-7",
     "cost_price": 40,
     "weight": 200,
     "price": 60,
-    "stock": 345
+    "stock": 338
   },
   {
     "name": "Dekhi Hui Duniya-7 Gujarati",
     "cost_price": 70,
-    "weight": 80,
+    "weight": 180,
     "price": 100,
-    "stock": 376
+    "stock": 368
   },
   {
     "name": "Dekhi Hui Duniya-8",
     "cost_price": 60,
     "weight": 250,
     "price": 100,
-    "stock": 856
+    "stock": 833
   },
   {
     "name": "Dini Bayanaat-1",
@@ -242,14 +249,14 @@
     "cost_price": 65,
     "weight": 420,
     "price": 80,
-    "stock": 243
+    "stock": 209
   },
   {
     "name": "Faiz E Sulemani",
     "cost_price": 80,
     "weight": 440,
     "price": 100,
-    "stock": 2
+    "stock": 0
   },
   {
     "name": "Faiz E Sulemani Gujarati",
@@ -263,56 +270,56 @@
     "cost_price": 0,
     "weight": 80,
     "price": 40,
-    "stock": 96
+    "stock": 115
   },
   {
     "name": "Hadis Me Aaye Hue Khawateen Ke Waqiaat-1",
     "cost_price": 42,
     "weight": 240,
     "price": 70,
-    "stock": 750
+    "stock": 732
   },
   {
     "name": "Hadis Me Aaye Hue Khawateen Ke Waqiaat-1 Gujarati",
     "cost_price": 58,
     "weight": 230,
     "price": 70,
-    "stock": 630
+    "stock": 625
   },
   {
     "name": "Hadis Me Aaye Hue Khawateen Ke Waqiaat-2",
     "cost_price": 70,
     "weight": 300,
     "price": 90,
-    "stock": 515
+    "stock": 504
   },
   {
     "name": "Hadis Me Aaye Hue Khawateen Ke Waqiaat-3",
     "cost_price": 70,
     "weight": 310,
     "price": 90,
-    "stock": 8
+    "stock": 9
   },
   {
     "name": "Hadis Me Aaye Hue Khawateen Ke Waqiaat-4",
     "cost_price": 55,
     "weight": 260,
     "price": 80,
-    "stock": 55
+    "stock": 241
   },
   {
     "name": "Hadis Me Aaye Hue Khawateen Ke Waqiaat-5",
     "cost_price": 80,
     "weight": 330,
     "price": 125,
-    "stock": 804
+    "stock": 756
   },
   {
     "name": "Hadis Sharif Padhne Ke Aadab",
     "cost_price": 40,
     "weight": 150,
     "price": 60,
-    "stock": 538
+    "stock": 356
   },
   {
     "name": "HAZRI REGISTER",
@@ -326,224 +333,203 @@
     "cost_price": 3.8,
     "weight": 10,
     "price": 10,
-    "stock": 3772
+    "stock": 3923
   },
   {
     "name": "Hz. Mufti Ahmed Sb Khanpuri Db. Ke Awsaaf v Kamaalaat",
     "cost_price": 35,
     "weight": 100,
     "price": 40,
-    "stock": 5
+    "stock": 2
   },
   {
     "name": "Hz. Mufti Saeed Sb. Rh. Ki Batein Or Yadein",
     "cost_price": 30,
     "weight": 100,
     "price": 40,
-    "stock": 195
+    "stock": 372
   },
   {
     "name": "Imam Bukhari Rh. Ke Halaat",
     "cost_price": 45,
     "weight": 150,
     "price": 60,
-    "stock": 127
+    "stock": 105
   },
   {
     "name": "Imam Mehndi Kab Or Kaha Gujarati",
     "cost_price": 50,
     "weight": 190,
     "price": 60,
-    "stock": 196
+    "stock": 66
   },
   {
     "name": "Islah E Muasharah",
     "cost_price": 50,
     "weight": 270,
     "price": 70,
-    "stock": 5
+    "stock": 2
   },
   {
     "name": "Islah E Muasharah Gujarati",
     "cost_price": 53,
     "weight": 290,
     "price": 90,
-    "stock": 552
+    "stock": 500
   },
   {
     "name": "Khutbat E Haram Shareef",
     "cost_price": 110,
     "weight": 350,
     "price": 130,
-    "stock": 359
+    "stock": 357
   },
   {
     "name": "MAHFUZAT",
     "cost_price": 17,
     "weight": 100,
     "price": 35,
-    "stock": 2832
+    "stock": 2359
   },
   {
     "name": "Mahfuzat Gujarati",
     "cost_price": 25,
     "weight": 100,
     "price": 35,
-    "stock": 3134
+    "stock": 3127
   },
   {
     "name": "Maqamat E Muqaddasa Ka Safar",
     "cost_price": 0,
     "weight": 120,
     "price": 40,
-    "stock": 7
+    "stock": 4
   },
   {
     "name": "Masnun Wazaif English",
     "cost_price": 18,
     "weight": 30,
     "price": 20,
-    "stock": 501
+    "stock": 360
   },
   {
     "name": "Masnun Wazaif Gujarati",
-    "cost_price": 13,
-    "weight": 40,
-    "price": 20,
-    "stock": 507
-  },
-  {
-    "name": "Masnun Wazaif Gujarati New",
     "cost_price": 16,
     "weight": 50,
     "price": 25,
-    "stock": 300
+    "stock": 575
   },
   {
     "name": "Masnun Wazaif Spanish",
     "cost_price": 17,
     "weight": 60,
     "price": 25,
-    "stock": 49
+    "stock": 247
   },
   {
     "name": "MASNUN WAZAIF URDU",
     "cost_price": 15,
     "weight": 50,
     "price": 25,
-    "stock": 186
+    "stock": 204
   },
   {
     "name": "Mujarrabat E Mahmudiyah",
     "cost_price": 28,
     "weight": 130,
     "price": 50,
-    "stock": 851
+    "stock": 853
   },
   {
     "name": "Mujarrabat E Mahmudiyah Gujarati",
     "cost_price": 30,
     "weight": 110,
     "price": 50,
-    "stock": 366
+    "stock": 239
   },
   {
     "name": "Mukhtasar Talimuddin Imaani Course Gujarati",
     "cost_price": 18,
     "weight": 80,
     "price": 28,
-    "stock": 960
+    "stock": 950
   },
   {
     "name": "Namaz Ki Masnun Qirat",
-    "cost_price": 0,
+    "cost_price": 5,
     "weight": 20,
     "price": 10,
-    "stock": 470
-  },
-  {
-    "name": "Noorani Makatib Tafsili Taruf",
-    "cost_price": 57,
-    "weight": 80,
-    "price": 75,
-    "stock": 8
-  },
-  {
-    "name": "Noorani Makatib Taruf Colour Copy",
-    "cost_price": 140,
-    "weight": 1,
-    "price": 150,
-    "stock": 13
+    "stock": 520
   },
   {
     "name": "Nuzul E Isa A.S.",
     "cost_price": 55,
     "weight": 250,
     "price": 100,
-    "stock": 826
+    "stock": 807
   },
   {
     "name": "PANJ PARA",
     "cost_price": 75,
     "weight": 520,
     "price": 110,
-    "stock": 166
+    "stock": 1418
   },
   {
     "name": "PARA E AMM",
     "cost_price": 22.5,
     "weight": 130,
     "price": 40,
-    "stock": 1009
+    "stock": 5170
   },
   {
     "name": "Para E Amm English Edition",
     "cost_price": 29,
     "weight": 125,
     "price": 40,
-    "stock": 345
+    "stock": 358
   },
   {
     "name": "Qadiyaniyat Ka Taruf",
     "cost_price": 55,
     "weight": 170,
     "price": 60,
-    "stock": 58
+    "stock": 59
   },
   {
     "name": "Qayamat Ki Nishaniyan",
     "cost_price": 122,
     "weight": 630,
     "price": 150,
-    "stock": 767
+    "stock": 773
   },
   {
     "name": "Qayamat Ki Nishaniyan Gujarati",
     "cost_price": 58,
     "weight": 290,
     "price": 70,
-    "stock": 77
+    "stock": 109
   },
   {
     "name": "Quran Majid Me Ambiya E Kiram Ka Taruf",
     "cost_price": 55,
     "weight": 230,
     "price": 80,
-    "stock": 247
+    "stock": 238
   },
   {
     "name": "Quran Me Aaye Hue Khawateen Ke Waqiaat",
     "cost_price": 350,
     "weight": 1930,
     "price": 500,
-    "stock": 155
+    "stock": 131
   },
   {
     "name": "Quran Shareef (5-5 Para Pocket Size)",
     "cost_price": 185,
     "weight": 280,
     "price": 200,
-    "stock": 714,
+    "stock": 584,
     "is_quran": true
   },
   {
@@ -551,7 +537,7 @@
     "cost_price": 250,
     "weight": 1010,
     "price": 325,
-    "stock": 1397,
+    "stock": 1284,
     "is_quran": true
   },
   {
@@ -559,7 +545,7 @@
     "cost_price": 250,
     "weight": 1030,
     "price": 325,
-    "stock": 232,
+    "stock": 1037,
     "is_quran": true
   },
   {
@@ -567,35 +553,35 @@
     "cost_price": 21,
     "weight": 60,
     "price": 35,
-    "stock": 1114
+    "stock": 825
   },
   {
     "name": "Qurani Wazaif Gujarati",
     "cost_price": 18,
     "weight": 60,
     "price": 30,
-    "stock": 287
+    "stock": 421
   },
   {
     "name": "Rauzatul Atfal",
     "cost_price": 11.5,
     "weight": 80,
     "price": 25,
-    "stock": 368
+    "stock": 842
   },
   {
     "name": "Rauzatul Atfal English (64 Page)",
     "cost_price": 23,
     "weight": 105,
     "price": 40,
-    "stock": 455
+    "stock": 476
   },
   {
     "name": "Rehbar E Muawin",
     "cost_price": 20,
     "weight": 100,
     "price": 30,
-    "stock": 592
+    "stock": 572
   },
   {
     "name": "Saraya Rasul s.a.",
@@ -609,119 +595,112 @@
     "cost_price": 53,
     "weight": 210,
     "price": 70,
-    "stock": 195
+    "stock": 190
   },
   {
     "name": "Shadi Ki Pehli Raat",
     "cost_price": 60,
     "weight": 230,
     "price": 80,
-    "stock": 794
+    "stock": 801
   },
   {
     "name": "Shadi Ki Pehli Raat Gujarati",
     "cost_price": 28,
     "weight": 110,
     "price": 40,
-    "stock": 753
+    "stock": 732
   },
   {
     "name": "Tadribi Kapi",
     "cost_price": 25,
     "weight": 120,
     "price": 30,
-    "stock": 321
+    "stock": 282
   },
   {
     "name": "Tadribi Kapi Pocket Size",
     "cost_price": 9,
     "weight": 30,
     "price": 15,
-    "stock": 533
+    "stock": 389
   },
   {
     "name": "Talimuddin-1",
     "cost_price": 16,
     "weight": 100,
     "price": 35,
-    "stock": 3846
+    "stock": 3898
   },
   {
     "name": "Talimuddin-1 Gujarati",
     "cost_price": 25,
     "weight": 100,
     "price": 35,
-    "stock": 435
+    "stock": 796
+  },
+  {
+    "name": "Talimuddin-2",
+    "cost_price": 27,
+    "weight": 120,
+    "price": 45,
+    "stock": 52
   },
   {
     "name": "Talimuddin-3",
     "cost_price": 28,
     "weight": 140,
     "price": 50,
-    "stock": 2079
+    "stock": 1777
   },
   {
-    "name": "TALIMUDDIN-4",
-    "cost_price": 38,
+    "name": "Talimuddin-4",
+    "cost_price": 35.8,
     "weight": 190,
     "price": 55,
-    "stock": 7
-  },
-  {
-    "name": "TALIMUDDIN-4",
-    "cost_price": 36,
-    "weight": 190,
-    "price": 55,
-    "stock": 2304
+    "stock": 2168
   },
   {
     "name": "Talimuddin-5",
-    "cost_price": 36,
+    "cost_price": 35,
     "weight": 160,
     "price": 55,
-    "stock": 498
+    "stock": 338
   },
   {
     "name": "Talimuddin-6",
-    "cost_price": 48,
+    "cost_price": 50,
     "weight": 260,
     "price": 90,
-    "stock": 92
+    "stock": 120
   },
   {
     "name": "Talimuddin-7",
     "cost_price": 63,
     "weight": 330,
     "price": 110,
-    "stock": 1944
+    "stock": 1839
   },
   {
     "name": "Taqabul E Adiyaan",
     "cost_price": 35,
     "weight": 100,
     "price": 40,
-    "stock": 103
+    "stock": 78
   },
   {
     "name": "Taysirul Quran",
     "cost_price": 620,
     "weight": 2900,
     "price": 750,
-    "stock": 265
-  },
-  {
-    "name": "Taysirul Quran Gujarati",
-    "cost_price": 630,
-    "weight": 2560,
-    "price": 650,
-    "stock": 1
+    "stock": 240
   },
   {
     "name": "Taysirul Quran Gujarati",
     "cost_price": 540,
     "weight": 2560,
     "price": 650,
-    "stock": 495
+    "stock": 494
   },
   {
     "name": "The Emergence Of The Mahdi",
@@ -735,34 +714,41 @@
     "cost_price": 11.5,
     "weight": 80,
     "price": 28,
-    "stock": 8770
-  },
-  {
-    "name": "URDU QAYDA",
-    "cost_price": 12.5,
-    "weight": 80,
-    "price": 28,
-    "stock": 5
-  },
-  {
-    "name": "URDU QAYDA",
-    "cost_price": 12,
-    "weight": 80,
-    "price": 28,
-    "stock": 160
+    "stock": 10423
   },
   {
     "name": "Zuhure Mehdi",
     "cost_price": 97,
     "weight": 550,
     "price": 120,
-    "stock": 827
+    "stock": 951
   },
   {
     "name": "Zuhure Mehdi Arbi",
     "cost_price": 180,
     "weight": 260,
     "price": 200,
-    "stock": 20
+    "stock": 18
+  },
+  {
+    "name": "Ramzan Ke Ruhani Aamal Urdu",
+    "cost_price": 0,
+    "weight": 200,
+    "price": 50,
+    "stock": 22
+  },
+  {
+    "name": "Ramzan Ke Ruhani Aamal Gujarati",
+    "cost_price": 0,
+    "weight": 190,
+    "price": 50,
+    "stock": 10
+  },
+  {
+    "name": "Ishq E Rasul s.a. Ke Waqiaat",
+    "cost_price": 0,
+    "weight": 120,
+    "price": 50,
+    "stock": 22
   }
 ]

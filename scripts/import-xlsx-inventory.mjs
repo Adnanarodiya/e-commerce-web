@@ -1,8 +1,11 @@
 /**
- * Import "kutub khana stock list (1).xlsx" → data/urdu-kitab-inventory.json
+ * Import "kutub khana stock list (N).xlsx" → data/urdu-kitab-inventory.json
  *
  * Excel columns (no header row):
  *   0:#  1:name  2:cost_price  3:weight  4:price  5:stock
+ *
+ * Prefers the highest version number when multiple lists exist (e.g. (2) over (1)).
+ * Override with: node scripts/import-xlsx-inventory.mjs path/to/file.xlsx
  */
 import fs from "fs";
 import path from "path";
@@ -14,15 +17,30 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 
 function findXlsx() {
-  const preferred = path.join(root, "kutub khana stock list (1).xlsx");
-  if (fs.existsSync(preferred)) return preferred;
-  const match = fs
+  const cliPath = process.argv[2];
+  if (cliPath) {
+    const resolved = path.isAbsolute(cliPath) ? cliPath : path.join(root, cliPath);
+    if (!fs.existsSync(resolved)) {
+      throw new Error(`Excel not found: ${resolved}`);
+    }
+    return resolved;
+  }
+
+  const matches = fs
     .readdirSync(root)
-    .find((f) => /kutub.*stock.*\.xlsx$/i.test(f) || /stock list.*\.xlsx$/i.test(f));
-  if (!match) {
+    .filter((f) => /kutub.*stock.*\.xlsx$/i.test(f) || /stock list.*\.xlsx$/i.test(f));
+  if (matches.length === 0) {
     throw new Error("Could not find kutub khana stock list Excel in project root");
   }
-  return path.join(root, match);
+
+  matches.sort((a, b) => {
+    const ver = (name) => {
+      const m = name.match(/\((\d+)\)\.xlsx$/i);
+      return m ? Number(m[1]) : 0;
+    };
+    return ver(b) - ver(a) || b.localeCompare(a);
+  });
+  return path.join(root, matches[0]);
 }
 
 function parseMoney(value) {
