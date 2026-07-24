@@ -52,6 +52,7 @@ export function deriveOrderDiscounts(
     quranSubtotal,
     quranQty,
     nonQuranSubtotal,
+    paymentType: order.payment_type,
   });
 
   return { quranDiscount, percentageDiscount };

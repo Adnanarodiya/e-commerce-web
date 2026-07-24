@@ -14,6 +14,7 @@ import Link from "next/link";
 import BookImage from "@/components/ui/BookImage";
 import PincodeField from "@/components/checkout/PincodeField";
 import { touchChoice } from "@/lib/touch-target";
+import { bulkDiscountPercent } from "@/lib/discounts";
 
 export default function Checkout() {
   const {
@@ -37,7 +38,6 @@ export default function Checkout() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    email: "",
     phone: "",
     address: "",
     city: "",
@@ -100,7 +100,6 @@ export default function Checkout() {
     const requiredFields = [
       "firstName",
       "lastName",
-      "email",
       "phone",
       "address",
       "city",
@@ -113,10 +112,6 @@ export default function Checkout() {
         newErrors[field] = "This field is required";
       }
     });
-
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
 
     if (deliveryType !== "in_person") {
       if (pincodeStatus !== "valid") {
@@ -219,7 +214,7 @@ export default function Checkout() {
     const orderData = {
       id: generatedOrderId,
       customer_name: `${formData.firstName} ${formData.lastName}`,
-      customer_email: formData.email,
+      customer_email: "",
       customer_phone: formData.phone,
       customer_address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
       delivery_type: deliveryType,
@@ -397,24 +392,7 @@ export default function Checkout() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1 text-start">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
-                    {t("email")}
-                  </label>
-                  <Input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="john.doe@example.com"
-                    className={errors.email ? "border-destructive" : ""}
-                  />
-                  {errors.email && (
-                    <p className="text-xs text-destructive text-start">{errors.email}</p>
-                  )}
-                </div>
-                <div className="space-y-1 text-start">
+              <div className="space-y-1 text-start">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
                     {isRtl ? "موبائل / فون نمبر" : "Phone / Mobile Number"}
                   </label>
@@ -430,7 +408,6 @@ export default function Checkout() {
                     <p className="text-xs text-destructive text-start">{errors.phone}</p>
                   )}
                 </div>
-              </div>
 
               <div className="space-y-1 text-start">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block text-start">
@@ -598,7 +575,9 @@ export default function Checkout() {
                 )}
                 {percentageDiscount > 0 && (
                   <div className="flex justify-between gap-3 text-sm text-green-600 font-semibold min-w-0">
-                    <span className="min-w-0 break-words">10% {t("discount")} (books)</span>
+                    <span className="min-w-0 break-words">
+                      {bulkDiscountPercent(paymentType)}% {t("discount")} (books)
+                    </span>
                     <span className="tabular-nums shrink-0">-₹{percentageDiscount.toFixed(2)}</span>
                   </div>
                 )}

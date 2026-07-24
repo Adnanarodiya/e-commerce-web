@@ -128,8 +128,10 @@ export default function AdminDashboard() {
 
   // Quotation modal (packaging + courier charges)
   const [callModal, setCallModal] = useState<Order | null>(null);
-  const [chargePackaging, setChargePackaging] = useState("0");
-  const [chargeCourier, setChargeCourier] = useState("0");
+  const [chargePackaging, setChargePackaging] = useState("");
+  const [chargeCourier, setChargeCourier] = useState("");
+  const [noPackagingCharge, setNoPackagingCharge] = useState(false);
+  const [noCourierCharge, setNoCourierCharge] = useState(false);
   const [chargeNotes, setChargeNotes] = useState("");
   const [submittingQuotation, setSubmittingQuotation] = useState(false);
 
@@ -305,19 +307,42 @@ export default function AdminDashboard() {
     buildOrderConfirmationData(order, getQuranMap(), upiSettings);
 
   const handleQuotationClick = (order: Order) => {
-    setChargePackaging(String(order.packaging_charge ?? 0));
-    setChargeCourier(String(order.courier_charge ?? 0));
+    const pack = Number(order.packaging_charge ?? 0);
+    const courier = Number(order.courier_charge ?? 0);
+    const packWaived = pack === 0 && !!order.quotation_shared_at;
+    const courierWaived = courier === 0 && !!order.quotation_shared_at;
+    setChargePackaging(pack > 0 ? String(pack) : "");
+    setChargeCourier(courier > 0 ? String(courier) : "");
+    setNoPackagingCharge(packWaived);
+    setNoCourierCharge(courierWaived);
     setChargeNotes(order.admin_notes ?? "");
     setCallModal(order);
   };
+
+  const parseChargeAmount = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return n;
+  };
+
+  const packagingResolved = noPackagingCharge || parseChargeAmount(chargePackaging) !== null;
+  const courierResolved = noCourierCharge || parseChargeAmount(chargeCourier) !== null;
+  const canSendQuotation = packagingResolved && courierResolved;
+
+  const resolvedPackaging = noPackagingCharge
+    ? 0
+    : Math.max(0, parseChargeAmount(chargePackaging) ?? 0);
+  const resolvedCourier = noCourierCharge
+    ? 0
+    : Math.max(0, parseChargeAmount(chargeCourier) ?? 0);
 
   const callModalProductsTotal = callModal
     ? Math.max(0, callModal.subtotal - callModal.discount)
     : 0;
   const callModalFinalTotal =
-    callModalProductsTotal +
-    Math.max(0, parseFloat(chargePackaging) || 0) +
-    Math.max(0, parseFloat(chargeCourier) || 0);
+    callModalProductsTotal + resolvedPackaging + resolvedCourier;
   const bookWeightById = new Map(
     books.map((book) => [book.id, Number(book.weight ?? 0)])
   );
@@ -338,9 +363,9 @@ export default function AdminDashboard() {
   };
 
   const submitQuotation = async () => {
-    if (!callModal) return;
-    const packaging = Math.max(0, parseFloat(chargePackaging) || 0);
-    const courier = Math.max(0, parseFloat(chargeCourier) || 0);
+    if (!callModal || !canSendQuotation) return;
+    const packaging = resolvedPackaging;
+    const courier = resolvedCourier;
     const productsTotal = Math.max(0, callModal.subtotal - callModal.discount);
     const finalTotal = productsTotal + packaging + courier;
 
@@ -1147,7 +1172,9 @@ export default function AdminDashboard() {
                               <p className="text-xs text-muted-foreground leading-snug">
                                 {t("productsTotal")}
                               </p>
-                              {(order.packaging_charge > 0 || (order.courier_charge ?? 0) > 0) ? (
+                              {(order.packaging_charge > 0 ||
+                                (order.courier_charge ?? 0) > 0 ||
+                                !!order.quotation_shared_at) ? (
                                 <p className="text-[11px] text-emerald-700 font-medium mt-1 leading-snug">
                                   Quoted ₹{order.total.toFixed(2)} · pack ₹{order.packaging_charge.toFixed(0)} + courier ₹{(order.courier_charge ?? 0).toFixed(0)}
                                 </p>
@@ -1724,7 +1751,7 @@ export default function AdminDashboard() {
                 size="lg"
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={submitQuotation}
-                disabled={submittingQuotation}
+                disabled={submittingQuotation || !canSendQuotation}
               >
                 <Check className="h-4 w-4 mr-2" />
                 {submittingQuotation ? "Saving…" : t("sendQuotation")}
@@ -1822,8 +1849,13 @@ export default function AdminDashboard() {
                     type="number"
                     min="0"
                     step="1"
-                    value={chargePackaging}
-                    onChange={(e) => setChargePackaging(e.target.value)}
+                    value={noPackagingCharge ? "0" : chargePackaging}
+                    onChange={(e) => {
+                      setNoPackagingCharge(false);
+                      setChargePackaging(e.target.value);
+                    }}
+                    disabled={noPackagingCharge}
+                    placeholder="Enter amount"
                     className={adminFieldInput}
                   />
                 </div>
@@ -1833,12 +1865,54 @@ export default function AdminDashboard() {
                     type="number"
                     min="0"
                     step="1"
-                    value={chargeCourier}
-                    onChange={(e) => setChargeCourier(e.target.value)}
+                    value={noCourierCharge ? "0" : chargeCourier}
+                    onChange={(e) => {
+                      setNoCourierCharge(false);
+                      setChargeCourier(e.target.value);
+                    }}
+                    disabled={noCourierCharge}
+                    placeholder="Enter amount"
                     className={adminFieldInput}
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-emerald-600"
+                    checked={noPackagingCharge}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setNoPackagingCharge(checked);
+                      if (checked) setChargePackaging("");
+                    }}
+                  />
+                  <span className="text-xs font-medium text-slate-700 leading-snug">
+                    {t("noPackagingCharge")}
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-emerald-600"
+                    checked={noCourierCharge}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setNoCourierCharge(checked);
+                      if (checked) setChargeCourier("");
+                    }}
+                  />
+                  <span className="text-xs font-medium text-slate-700 leading-snug">
+                    {t("noCourierCharge")}
+                  </span>
+                </label>
+              </div>
+              {!canSendQuotation && (
+                <p className="text-xs text-amber-700">
+                  {t("quotationChargesRequired")}
+                </p>
+              )}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-600">{t("adminNotes")}</label>
                 <Textarea

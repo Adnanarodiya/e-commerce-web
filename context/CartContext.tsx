@@ -210,6 +210,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     quranSubtotal,
     quranQty,
     nonQuranSubtotal,
+    paymentType,
   });
   const total = Math.max(0, subtotal - discount);
 

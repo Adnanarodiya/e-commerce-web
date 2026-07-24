@@ -39,8 +39,8 @@ export function formatOrderWhatsAppMessage(data: OrderConfirmationData): string 
 
   if (isBank) {
     lines.push("Payment: *Bank / UPI*");
-    if (data.payee_name) lines.push(`Payee: ${data.payee_name}`);
-    if (data.upi_id) lines.push(`UPI ID: ${data.upi_id}`);
+    // if (data.payee_name) lines.push(`Payee: ${data.payee_name}`);
+    // if (data.upi_id) lines.push(`UPI ID: ${data.upi_id}`);
     lines.push("");
   } else if (data.payment_type === "cash") {
     lines.push("Payment: *Cash on Delivery*");

@@ -10,6 +10,7 @@ import {
 import type { OrderConfirmationData } from "@/lib/order-confirmation";
 import { formatDeliveryType, formatMoneyPdf } from "@/lib/format-order";
 import { registerPdfFonts, PDF_FONT_LATIN, pdfFontForText } from "@/lib/pdf-fonts";
+import { bulkDiscountPercent } from "@/lib/discounts";
 
 registerPdfFonts();
 
@@ -180,7 +181,6 @@ export default function OrderConfirmationDocument({
               {data.customer_name}
             </Text>
             <Text style={styles.valueText}>{data.customer_phone}</Text>
-            <Text style={styles.valueText}>{data.customer_email}</Text>
           </View>
           <View style={{ width: "48%" }}>
             <Text style={styles.label}>Order Details</Text>
@@ -244,7 +244,7 @@ export default function OrderConfirmationDocument({
           {pctDisc > 0 && (
             <View style={styles.totalRow}>
               <Text style={{ fontSize: 10, color: GREEN }}>
-                10% discount (books, orders ₹5,000+)
+                {bulkDiscountPercent(data.payment_type === "cash" ? "cash" : "bank")}% discount (books, orders ₹5,000+)
               </Text>
               <Text style={{ fontSize: 10, color: GREEN, fontFamily: "Helvetica-Bold" }}>
                 -{money(pctDisc)}

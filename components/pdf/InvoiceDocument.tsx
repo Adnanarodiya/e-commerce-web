@@ -9,6 +9,7 @@ import {
 } from "@react-pdf/renderer";
 import type { InvoiceData, InvoiceItem } from "@/lib/invoice";
 import { formatDeliveryType, formatMoneyPdf } from "@/lib/format-order";
+import { bulkDiscountPercent } from "@/lib/discounts";
 
 export type { InvoiceData, InvoiceItem };
 
@@ -268,12 +269,6 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 {"\n"}
               </Text>
             ) : null}
-            {data.customer_email ? (
-              <Text style={styles.valueText}>
-                {data.customer_email}
-                {"\n"}
-              </Text>
-            ) : null}
             {data.customer_address ? (
               <Text style={styles.valueText}>{data.customer_address}</Text>
             ) : null}
@@ -362,7 +357,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           {pctDisc > 0 && (
             <View style={styles.discountRow}>
               <Text style={{ fontSize: 10, color: GREEN }}>
-                10% discount (books, orders Rs. 5,000+)
+                {bulkDiscountPercent(data.payment_type === "cash" ? "cash" : "bank")}% discount (books, orders Rs. 5,000+)
               </Text>
               <Text
                 style={[
